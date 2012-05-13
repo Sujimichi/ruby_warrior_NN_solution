@@ -15,7 +15,7 @@ class Brain
   #The action is one of the warriors err actions (duh), the impulse is the direction to perform that action. ie: [:walk, :forward]
   def act_on inputs
     output = @network.process(inputs) #send inputs to neural net and return result.
-    puts "neural output:\n#{output}"
+    #puts "neural output:\n#{output}"
    
     #First two output nodes of network will define impulse.  Impulse is the direction for an action ie walk! or attack!
     #First node represents impulse to go forward or backwards, +ive => forward, -ive backward.
@@ -23,22 +23,22 @@ class Brain
     #which ever impulse (forward/back or left/right) is absolutely stronger will be the one taken
     #If both nodes are between -0.5 and +0.5 then it will rest. Think joy stick
 
-    if output[0] >= -0.5 && output[0] <= 0.5 && output[1] >= -0.5 && output[1] <= 0.5 
-      impulse = :rest
-    elsif output[0].abs > output[1].abs #moving forward or backwards
+    #if output[0] >= -0.5 && output[0] <= 0.5 && output[1] >= -0.5 && output[1] <= 0.5 
+      #impulse = :rest
+    if output[0].abs > output[1].abs #moving forward or backwards
       impulse = (output[0] > 0) ? :forward : :backward
     else #moving left or right
       impulse = (output[1] > 0) ? :left : :right
     end
 
-    inpulse = :pivot if output[0] <= -2.0 && output[1].abs >= 2.0 #pull hard back and turn hard in either direction to pivot!
+    #inpulse = :pivot if output[0] <= -3.0 && output[1].abs >= 3.0 #pull hard back and turn hard in either direction to pivot!
 
     
     #The other nodes each represent an action.  Which ever node is stimulated most is the action taken.
-    actions = [[:walk, output[2]], [:attack, output[3]], [:rescue, output[4]]]
+    actions = [[:walk, output[2]], [:attack, output[3]], [:rest, output[4]], [:rescue, output[5]], [:pivot, output[6]]]
     action = actions.max_by{|grp| grp.last}.first 
-    action = :rest if impulse.eql?(:rest)
-    action = :walk if impulse.eql?(:pivot)
+    impulse = :rest if action.eql?(:rest)
+    impulse = :backward if action.eql?(:pivot)
   
     return [action, impulse]
   end
@@ -137,7 +137,7 @@ class Array
   
   #return the product of the array
   def product
-    self.inject{|i,j| i * j}
+    self.inject{|i,j| i.to_f * j.to_f}
   end
   
   #return the activiated product.  For use in neural networks.  The product is passed through a sin function.
@@ -147,7 +147,7 @@ class Array
   
   #return the summed value of the array
   def sum
-    self.inject{|i,j| i + j}
+    self.inject{|i,j| i.to_f + j.to_f}
   end
 
   #divide the array into n separate arrays.

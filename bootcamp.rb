@@ -28,13 +28,14 @@ class Drills
 end
 
 class BasicTraining
-  attr_accessor :ga, :nodes, :genelength
+  attr_accessor :ga, :nodes, :gene_length
 
   def set_config_for n_layers
+    @warrior_name = Dir.getwd.split("/").last.sub("-beginner", "")
     @n_layers = n_layers
-    nodes_1_layer = {:in => 15, :out => 5}
-    nodes_2_layer = {:in => 15, :inner => 8, :out => 5}
-    nodes_3_layer = {:in => 15, :inner => 8, :inner2 => 8, :out => 5}
+    nodes_1_layer = {:in => 15, :out => 7}
+    nodes_2_layer = {:in => 15, :inner => 8, :out => 7}
+    nodes_3_layer = {:in => 15, :inner => 8, :inner2 => 8, :out => 7}
     @nodes = [nodes_1_layer, nodes_2_layer, nodes_3_layer][@n_layers-1] 
     @gene_length = Brain.required_genome_length_for(nodes)
   end
@@ -45,19 +46,20 @@ class BasicTraining
 
   def write_best
     genome = @ga.best
-    File.open("/home/sujimichi/coding/lab/rubywarrior/deathbot-beginner/genome",'w'){|f| f.write( genome.join(",") )}
+    File.open("./genome",'w'){|f| f.write( genome.join(",") )}
   end
 
   def save_pop
+    puts "enter a file name for population"
     f_name = gets.chomp #lvl4-twolayer-population
     return "no filename" if f_name.nil? || f_name.empty?
-    pop_file = "/home/sujimichi/coding/lab/rubywarrior/deathbot-beginner/#{f_name}"
+    pop_file = "./#{f_name}"
     File.open(pop_file,'w'){|f| f.write( @ga.population )}
 
   end
   def load_pop f_name
     require 'json'
-    pop_file = "/home/sujimichi/coding/lab/rubywarrior/deathbot-beginner/#{f_name}"
+    pop_file = "./#{f_name}"
     p = File.open(pop_file, "r"){|f| f.readlines}
     pop = JSON.parse p.first
     @ga.population = pop
@@ -77,22 +79,21 @@ class BootCamp < BasicTraining
       print "#{gen} |"
 
       brain = Brains[@n_layers-1].new(@nodes, genome)  
-      score = []
+      d = Drills.new(brain)
+      r = 1 #representational bias
 
       #order of inputs; <- /\ -> \/ 
-      r = 1 #representational bias, yeah so that prob needs explaining
+    
 
-      d = Drills.new(brain)
       #Basic walking drills - move in only available dir
       d.test( {
         [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :left],
         [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
+        [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
         [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :right],
         [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward],
         [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, '0wf'] #Dont just sit there, do something.
       })
-
-
 
       unless d.score.include?(0) #got to walk before you can attack!
         #Basic Attack - attack enemy in adjacent squares when in open space
@@ -105,27 +106,49 @@ class BootCamp < BasicTraining
 
         #Basic Attack - attack enemy in closed spaces
         d.test( {
+          [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
           [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
-          [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF2'],  #walls to left T infront
-          [0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF3']   #walls to right T infront
+          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking
+          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
+          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
+          #[1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.7, 1, r] => [:attack, :forward, 'AF5'],  #walls either side T infront attacking
+        
+          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR']  #walls either side T infront, health low, being shot at -> retreat
+
+
+
+
+          #[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF2'],  #walls to left T infront
+          #[0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF3']   #walls to right T infront
         })
 
       end
+
+      message = "\t\t - MASTERED BASIC Combat" unless d.score.include?(0)
 
       unless d.score.include?(0) 
 
-        #learn to recover after fight but not to be a wimp about it.
+        #learn to recover after fight
         d.test( {
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 0.9, r] => [:rest, :rest, 'R9', 3],  #recover from 90% damage (scores tripple points)
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0.8, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0.7, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
 
-          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.2, 0.1, r] => [:attack, :forward, 'AFD'], #attack while damaged if T nr
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 0.1, r] => [:walk, :forward, 'WFD'] #limp on if only slightly hurt and under fire
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
+          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 1, r] => [:walk, :forward, 'WFD2'],  #limp on if only slightly hurt and under fire
+
+          
         })
 
       end
-      print "\t\t - MASTERED BASIC Combat" unless d.score.include?(0)
+
+      message = "\t\t - Field Medic" unless d.score.include?(0)
+
 
 
       unless d.score.include?(0) #got to fight to be able to rescue!
@@ -138,21 +161,32 @@ class BootCamp < BasicTraining
         }) 
       end
 
+      message = "\t\t - Graduated" unless d.score.include?(0)
 
-      score = d.score.sum
-      puts "\t\t- #{score}"
+
+      score = d.score.sum.to_i
+
+
+      print "\t\t- #{score}"
+      print message if message
+      puts " "
       score
 
     }) 
 
   end
 
+  #move 
   def graduate
     ct = CombatTraining.new(@n_layers)
     ct.ga.population = @ga.population
+    ct
   end
 
 end
+
+#   bc = BootCamp.new(2); bc.train
+
 
 
 
@@ -166,53 +200,14 @@ class CombatTraining < BasicTraining
 
       print "#{gen}"
 
-      genome_file = "/home/sujimichi/coding/lab/rubywarrior/deathbot-beginner/genome"
+      genome_file = "./genome"
       File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
+      invigilator = Invigilator.new(@warrior_name)
+      results = `rubywarrior -t 0 -s`
 
-      test = `rubywarrior -t 0 -s`
+      score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+      print " | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
 
-
-      #level score based of points awarded during game.  
-      level_score = test.split("\n").select{|line| line.include?("earns")}.map{|l| l.split[2].to_i}.inject{|i,j| i+j}
-      level_score ||= -100 #punishment for not earning anything
-
-
-      begin
-        lines = test.split("\n")
-        total = lines.select{|line| line.include?("Total Score:")}.first.split("=").last.to_i
-        time_bonus = lines.select{|line| line.include?("Time Bonus:")}.first.split(" ").last.to_i
-        clear_bonus = lines.select{|line| line.include?("Clear Bonus:")}.first.split(" ").last.to_i
-      rescue
-        total = -200 #punishment for failing to complete level
-        time_bonus = 0
-        clear_bonus = 0
-      end
-
-
-      turn_score = [0]
-      turns = test.split("- turn")
-      turns.each do |turn|
-
-        turn_score << 5 if turn.match(/deathbot receives (\d) health/) && !( turn.match(/deathbot takes (\d) damage/) || turn.match(/already fit as a fiddle/) )
-        %w[forward backward left right].each do |dir|
-          turn_score <<  4  if turn.match(/deathbot attacks #{dir} and hits/) && !(turn.match(/deathbot attacks #{dir} and hits nothing/) || turn.match(/hits Captive/))
-          turn_score <<  8  if turn.match(/deathbot unbinds #{dir} and rescues Captive/)
-          turn_score << -4  if turn.match(/Captive dies/)
-        end
-        turn_score << -2 if turn.match(/deathbot does nothing/)
-        turn_score << -2 if turn.match(/deathbot walks/) && turn.match(/deathbot bumps/)
-
-      end
-      turn_score = turn_score.sum
-
-
-      bonus = clear_bonus*3 + time_bonus*3 #times three to increase onerous to earn bonuses.
-      ts = turns.size-1
-
-      ts_score = (turn_score.to_f/ts)*4
-
-      score = level_score + total*2 + ts_score + bonus
-      print " | levelscore: #{level_score} | turnscore: #{ts_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{ts} | Total: #{total} | fitnes: #{score.round(2)}"
       if score > @highest_score 
         @highest_score = score
         print "\t\t<----BestSoFar"
@@ -229,9 +224,76 @@ class CombatTraining < BasicTraining
   end
 end
 
-ct = CombatTraining.new(2)
-ct.ga.population = pop.clone
-ct.train
+
+class AgentTraining < BasicTraining
+
+end
+
+class Invigilator
+
+  def initialize name = Dir.getwd.split("/").last.sub("-beginner", "")
+    @warrior_name = Dir.getwd.split("/").last.sub("-beginner", "")
+  end
+
+  def score_results results
+    
+    lines = results.split("\n") 
+    turns = results.split("- turn")
+
+    begin
+      level_total = lines.select{|line| line.include?("Total Score:")}.first.split("=").last.to_i
+      time_bonus = lines.select{|line| line.include?("Time Bonus:")}.first.split(" ").last.to_i if results.include?("Time Bonus:")
+      clear_bonus = lines.select{|line| line.include?("Clear Bonus:")}.first.split(" ").last.to_i if results.include?("Clear Bonus:")
+    rescue
+      level_total = -200 #punishment for failing to complete level
+    end
+
+    time_bonus ||= 0
+    clear_bonus ||= 0
+    #level score based of points awarded during game.  
+    level_score = lines.select{|line| line.include?("earns")}.map{|l| l.split[2].to_i}.inject{|i,j| i+j}
+    level_score ||= -100 #punishment for not earning anything
+
+
+    turn_score = []
+    turns.each do |turn|
+
+      turn_score << 15 if turn.match(/#{@warrior_name} receives (\d) health/) && !( turn.match(/#{@warrior_name} takes (\d) damage/) || turn.match(/already fit as a fiddle/) )
+
+      %w[forward backward left right].each do |dir|
+        turn_score <<  3  if turn.match(/#{@warrior_name} attacks #{dir} and hits/) && !(turn.match(/#{@warrior_name} attacks #{dir} and hits nothing/) || turn.match(/hits Captive/))
+        turn_score << -3  if turn.match(/#{@warrior_name} attacks #{dir} and hits/) && (turn.match(/#{@warrior_name} attacks #{dir} and hits nothing/) || turn.match(/hits Captive/))
+        turn_score <<  50  if turn.match(/#{@warrior_name} unbinds #{dir} and rescues Captive/)         
+      end
+
+      #will already have points for forward attack, this is a bonus for successful forward attack
+      turn_score <<  1  if turn.match(/#{@warrior_name} attacks forward and hits/) && !(turn.match(/#{@warrior_name} attacks forward and hits nothing/) || turn.match(/hits Captive/))
+
+
+      turn_score << -6  if turn.match(/Captive dies/)
+      turn_score << -4 if turn.match(/#{@warrior_name} does nothing/)
+      turn_score << -4 if turn.match(/#{@warrior_name} walks/) && turn.match(/#{@warrior_name} bumps/)
+      turn_score <<  2 if turn.match(/deathbot walks forward/) && !turn.match(/deathbot bumps/)
+
+    end
+
+    turn_score = turn_score.sum
+    n_turns = turns.size-1
+    turn_score = (turn_score.to_f/n_turns)*4
+
+
+    bonus = clear_bonus*3 + time_bonus*3 #times three to increase onerous to earn bonuses.
+
+
+    score = level_score + level_total*2 + turn_score + bonus - (n_turns/10)
+    return [score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus]
+  end
+
+end
+
+#ct = CombatTraining.new(2)
+#ct.ga.population = pop.clone
+#ct.train
 
 
 #ga.population = pop
@@ -252,34 +314,6 @@ ct.train
 
 
 =end
-
-
-
-=begin  
-  unless d.score.include?(0) 
-    #Level 4 sequence
-    d.test( {
-      [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 1]  => [:walk, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.0, 0.0, 1]  => [:attack, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.15, 0.0, 1] => [:attack, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.3, 0.15, 1]  => [:attack, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.45, 0.3, 1] => [:attack, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.6, 0.45, 1]  => [:attack, :forward],
-      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6, 0.6, 1]  => [:walk, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.75, 0.6, 1] => [:attack, :forward],
-      [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.9, 0.75, 1]  => [:attack, :forward],
-      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 0.9, 1]  => [:rest, :rest],      
-      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0.9, 1]  => [:rest, :rest],
-      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6, 0.7, 1]  => [:rest, :rest],      
-      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0.6, 1]  => [:rest, :rest],
-      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0.5, 1]  => [:walk, :forward]
-    })
-
-  end
-  print "\t\t - MASTERED Level 4 examples" unless d.score.include?(0)
-=end
-
-
 
 
 #SimpleBrain 

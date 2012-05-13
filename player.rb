@@ -8,16 +8,16 @@ class Player
     #return warrior.rest! if warrior.health < 18 && !warrior.feel.enemy?
     #return warrior.attack!(:forward) if warrior.feel.enemy?
     #return warrior.walk!(:forward)
-
+    
     #nodes = {:in => 15, :inner => 8, :inner2 => 8, :out => 5}
-    nodes = {:in => 15, :inner => 8, :out => 5}
+    nodes = {:in => 15, :inner => 8, :out => 7}
     #nodes = {:in => 15, :out => 5}
 
     #Sense world and present as an array of inputs for NN
     inputs = input_array_for(warrior)
 
     #Read genome from file and divide into groups.  groups should be eql in size and the size should eql number of imputs to NN
-    genome = File.open("/home/sujimichi/coding/lab/rubywarrior/testbot-beginner/genome", "r"){|f| f.readlines}.join.split(",").map{|s| s.to_f}  
+    genome = File.open("./genome", "r"){|f| f.readlines}.join.split(",").map{|s| s.to_f}  
     brain = Brains::Type2.new(nodes, genome)  
     action, impulse = brain.act_on(inputs)
    
@@ -25,7 +25,6 @@ class Player
     puts impulse.inspect
     puts action.inspect
    
-    
     #The Body - send 'impulse' and 'action' from brain to the body
 
     #done inside rescue as brain may request actions the body can't yet do, like rest! in the eariler levels.  
@@ -72,12 +71,13 @@ class Player
     #get health or return full health if health is not available.  Full health is 0 to dead at 1.  Resason is two fold;  The 'health' stimulus gets stronger
     #as the warrior gets weeker which should get the nerual nets attention and also to normalize it with other senses.
     begin
-      a << (1 - 1.0/20 * warrior.health).round(2)
+      w_health = warrior.health
     rescue
-      a << 0
+      w_health = 20
     end
+    a << (1 - 1.0/20 * w_health).round(2)
     
-    a << (1 - 1.0/20 * @previous_health).round(2)
+    a << ((@previous_health > w_health) ? 1 : 0)
     a << 1 #representational bias. yeah, I should prob explain this!  its REALLY important!
     a
   end
