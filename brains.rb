@@ -14,17 +14,14 @@ class Brain
   #(returned as array [action, impulse]
   #The action is one of the warriors err actions (duh), the impulse is the direction to perform that action. ie: [:walk, :forward]
   def act_on inputs
-    output = @network.process(inputs) #send inputs to neural net and return result.
-    #puts "neural output:\n#{output}"
+
+    #send inputs to neural net and return result.
+    output = @network.process(inputs) 
    
     #First two output nodes of network will define impulse.  Impulse is the direction for an action ie walk! or attack!
     #First node represents impulse to go forward or backwards, +ive => forward, -ive backward.
     #Second node represents impulse to go left or right, , +ive => left, -ive right.
     #which ever impulse (forward/back or left/right) is absolutely stronger will be the one taken
-    #If both nodes are between -0.5 and +0.5 then it will rest. Think joy stick
-
-    #if output[0] >= -0.5 && output[0] <= 0.5 && output[1] >= -0.5 && output[1] <= 0.5 
-      #impulse = :rest
     if output[0].abs > output[1].abs #moving forward or backwards
       impulse = (output[0] > 0) ? :forward : :backward
     else #moving left or right
@@ -35,10 +32,11 @@ class Brain
 
     
     #The other nodes each represent an action.  Which ever node is stimulated most is the action taken.
-    actions = [[:walk, output[2]], [:attack, output[3]], [:rest, output[4]], [:rescue, output[5]], [:pivot, output[6]]]
+    actions = [[:walk, output[2]], [:attack, output[3]], [:rest, output[4]], [:rescue, output[5]], [:pivot, output[6]], [:shoot, output[7]]]
     action = actions.max_by{|grp| grp.last}.first 
     impulse = :rest if action.eql?(:rest)
-    impulse = :backward if action.eql?(:pivot)
+
+    impulse = :backward if action.eql?(:pivot) #can i get away without this?
   
     return [action, impulse]
   end
@@ -128,7 +126,7 @@ class NeuralLayer
   end
  
   def process inputs
-    #inputs = inputs[0..@weights.first.size-1] #ensure inputs size lines up with size of weights.  ignoring extra input
+    raise "input size error" if inputs.size != @weights.first.size
     @nodes[:output].times.map{ |i| inputs.zip(@weights[i]).map{|d| d.product_with_activation}.sum.round(2) }
   end
 end
@@ -159,7 +157,3 @@ class Array
 end
 
 
-#move to non-binary genome <---
-#normalize input from health
-#remove rest! from rescue block and add specific node.
-#

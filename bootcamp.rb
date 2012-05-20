@@ -7,35 +7,20 @@ require "./darwin.rb"
 #After boot camp the population is transfered to run in the real conditions where the behaviours learnt in boot camp can be refined. 
 #
 #As well as faster runtimes Bootcamp also provides a smoother gradient for evolution.  In the "real environment" of rubywarior a great many positive 
-#selection/mutation events need to happen before any points are awarded atall.  Even in the simpler level the 
+#selection/mutation events need to happen before any points are awarded atall.  
 
-class Drills
-  attr_accessor :score
-  def initialize brain
-    @brain = brain
-    @score = []
-  end
 
-  def test args
-    args.each do |input,response| 
-      code = response[2]
-      points = response[3]
-      points ||= 1
-      code ||= response.map{|s| s.to_s.each_char.map.first}.join
-      @score << (@brain.act_on(input).eql?(response[0..1]) ? (print(code);points) : 0)
-    end
-  end
-end
-
+#base class which BootCamp and CombatTraining inherit.  Simply provides methods for initializing a 1,2 or 3 layer NN(Brain), 
+#saving and loading the population to file and running the GA.
 class BasicTraining
   attr_accessor :ga, :nodes, :gene_length
 
   def set_config_for n_layers
     @warrior_name = Dir.getwd.split("/").last.sub("-beginner", "")
     @n_layers = n_layers
-    nodes_1_layer = {:in => 15, :out => 7}
-    nodes_2_layer = {:in => 15, :inner => 8, :out => 7}
-    nodes_3_layer = {:in => 15, :inner => 8, :inner2 => 8, :out => 7}
+    nodes_1_layer = {:in => 27, :out => 8}
+    nodes_2_layer = {:in => 27, :inner => 8, :out => 8}
+    nodes_3_layer = {:in => 27, :inner => 8, :inner2 => 8, :out => 8}
     @nodes = [nodes_1_layer, nodes_2_layer, nodes_3_layer][@n_layers-1] 
     @gene_length = Brain.required_genome_length_for(nodes)
   end
@@ -67,105 +52,39 @@ class BasicTraining
 
 end
 
-#define which brain to use 1, 2 or 3 layered.
 
 class BootCamp < BasicTraining
 
+  #n_layers - define which NN to use 1, 2 or 3 layered.
   def initialize n_layers = 2 
     set_config_for n_layers
 
     @ga = MGA.new(:generations => 10000, :mutation_rate => 10, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-      #puts "\n\n#{genome.join(',')}"
       print "#{gen} |"
 
-      brain = Brains[@n_layers-1].new(@nodes, genome)  
-      d = Drills.new(brain)
-      r = 1 #representational bias
+      recruit = Brains[@n_layers-1].new(@nodes, genome)  
 
-      #order of inputs; <- /\ -> \/ 
-    
-
+      d = DrillSergeant.new
+      d.recruit = recruit
+      
+     
       #Basic walking drills - move in only available dir
-      d.test( {
-        [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :left],
-        [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
-        [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
-        [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :right],
-        [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward],
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, '0wf'] #Dont just sit there, do something.
-      })
-
-      unless d.score.include?(0) #got to walk before you can attack!
-        #Basic Attack - attack enemy in adjacent squares when in open space
-        d.test( {
-          [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :left],
-          [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward],
-          [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :right],
-          [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, r] => [:attack, :backward]
-        })
-
-        #Basic Attack - attack enemy in closed spaces
-        d.test( {
-          [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
-          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
-          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking
-          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
-          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
-          #[1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.7, 1, r] => [:attack, :forward, 'AF5'],  #walls either side T infront attacking
-        
-          [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR']  #walls either side T infront, health low, being shot at -> retreat
-
-
-
-
-          #[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF2'],  #walls to left T infront
-          #[0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF3']   #walls to right T infront
-        })
-
-      end
-
-      message = "\t\t - MASTERED BASIC Combat" unless d.score.include?(0)
+      d.test_recruit_on(AssaultCourse::BasicManuvers)
+      d.test_recruit_on(AssaultCourse::Retreat)
 
       unless d.score.include?(0) 
-
-        #learn to recover after fight
-        d.test( {
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.8, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.7, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.6, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
-
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
-          [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.2, 1, r] => [:walk, :forward, 'WFD2'],  #limp on if only slightly hurt and under fire
-
-          
-        })
-
+        d.test_recruit_on(AssaultCourse::BasicAssault)
+        d.test_recruit_on(AssaultCourse::Recovery ) #learn to recover after fight
+        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #Basic Attack - attack enemy in closed spaces
+        d.test_recruit_on(AssaultCourse::WeaponsTraining)
+        d.test_recruit_on(AssaultCourse::Rescue)  #basic rescue - rescue captive in adjacent sqaure
       end
 
-      message = "\t\t - Field Medic" unless d.score.include?(0)
-
-
-
-      unless d.score.include?(0) #got to fight to be able to rescue!
-        #Basic Rescue - rescue captive in adjacent sqaure
-        d.test( {
-          [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, r] => [:rescue, :left],
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, r] => [:rescue, :forward],
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, r] => [:rescue, :right],
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, r] => [:rescue, :backward]
-        }) 
-      end
-
-      message = "\t\t - Graduated" unless d.score.include?(0)
-
+      message = "\t\t - Graduated BootCamp!" unless d.score.include?(0) #56
 
       score = d.score.sum.to_i
 
+      #AssaultCourse.points.values.sum
 
       print "\t\t- #{score}"
       print message if message
@@ -176,7 +95,6 @@ class BootCamp < BasicTraining
 
   end
 
-  #move 
   def graduate
     ct = CombatTraining.new(@n_layers)
     ct.ga.population = @ga.population
@@ -185,18 +103,15 @@ class BootCamp < BasicTraining
 
 end
 
-#   bc = BootCamp.new(2); bc.train
-
-
 
 
 class CombatTraining < BasicTraining
 
   def initialize n_layers
     set_config_for n_layers
-    @highest_score = -1000
+    reset_high_score
 
-    @ga =MGA.new(:generations => 5000, :mutation_rate => 10, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
 
       print "#{gen}"
 
@@ -212,7 +127,7 @@ class CombatTraining < BasicTraining
         @highest_score = score
         print "\t\t<----BestSoFar"
       elsif score == @highest_score && score > 0
-        print "\t\t<----HighGrade"
+        print "\t\t<----Combat Ready!!"
       end
 
 
@@ -222,12 +137,150 @@ class CombatTraining < BasicTraining
     })
 
   end
+
+  def reset_high_score
+    @highest_score = -1000
+  end
 end
 
 
 class AgentTraining < BasicTraining
 
 end
+
+
+class AssaultCourse
+  #input mapping; 
+  #   < /\ > \/ => left, forward, right, backward
+  #   Hc, Hp => Health_current, Health_previous
+  #   r => representational bias
+  #   #vision(look) - each direction has three inputs, closest, further, furthest denoted by numbner of symbols ie:
+  #   <, <<, <<< for left || /\, //\\, ///\\\ for forward - closest, further and furthest respectivly
+  #
+  # [w<, w/\, w>, w\/, e<, e/\, e>, e\/, c<, c/\, c>, c\/, <, <<, <<<, /\, //\\, ///\\\, >, >>, >>>, \/, \\//, \\\///, Hc, Hp, r]
+  # [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,|0, 0, 0,|0, -1, 1,|0, 0, 0,|0, 0, 0,|0.0, 0, 1]
+
+  # [:nothing, :wall, :captive, :sludge, :thinkslugde, :archer, :wizard]
+  # [0.0, 0.16, 0.32, 0.48, 0.64, 0.8, 0.96] 
+
+
+  r = 1 #representational bias
+
+  def self.points
+    AssaultCourse.constants.map{|c| {c => AssaultCourse.const_get(c).size}}.inject{|i,j| i.merge(j)}
+  end
+
+
+  BasicManuvers = {
+    [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :left],
+    [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
+    [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :right],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward],
+
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, '0wf'], #Dont just sit there, do something.
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, 'fwc']
+  }
+
+  Retreat = {
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],   #walls either side T infront, health low, being shot at -> retreat
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR']   #walls either side T infront, health low, being shot at -> retreat  
+  }
+
+  #Basic Attack - attack enemy in adjacent squares when in open space
+  BasicAssault = {
+    #blind
+    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :left],         
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward],
+    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :right],
+    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :backward],
+    #with vision
+    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :left],         
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward],
+    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :right],
+    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, r] => [:attack, :backward]
+  }
+
+  #learn to recover after fight
+  Recovery = {
+    #blind
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.90, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.80, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.70, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.60, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.50, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.40, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
+
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.40, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.20, 1, r] => [:walk, :forward, 'WFD2'],  #limp on if only slightly hurt and under fire
+
+    #with vision
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.90, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.80, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.70, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.60, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.50, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.40, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
+
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.40, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.20, 1, r] => [:walk, :forward, 'WFD2']  #limp on if only slightly hurt and under fire     
+  }
+
+  CloseQuaterCombat =  {
+    #blind
+    [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
+
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking          
+
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
+
+    #[1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
+    #[1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],   #walls either side T infront, health low, being shot at -> retreat
+
+
+    #with vision
+    [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 3, 0, 0, 0.0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
+
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking          
+
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
+
+    #[1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
+    #[1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR']   #walls either side T infront, health low, being shot at -> retreat
+
+    #[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF2'],  #walls to left T infront
+    #[0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF3']   #walls to right T infront
+  }
+
+  WeaponsTraining = {
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.0, 0.0, 0.9, 0.1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:shoot, :forward, 'SF1'],  #walls either side high_threat target in distance infront        
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.0, 0.9, 0.0, 0.1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:walk, :backward, 'aim1'],
+
+  }
+
+  Rescue =  {
+    #blind
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :left],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :forward],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :right],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :backward],          
+
+    #with vision
+    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :left],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :forward],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :right],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, r] => [:rescue, :backward]
+
+  }      
+end
+
 
 class Invigilator
 
@@ -259,11 +312,14 @@ class Invigilator
     turns.each do |turn|
 
       turn_score << 15 if turn.match(/#{@warrior_name} receives (\d) health/) && !( turn.match(/#{@warrior_name} takes (\d) damage/) || turn.match(/already fit as a fiddle/) )
+      turn_score << -20 if turn.match(/already fit as a fiddle/) #equates to doing nothing.
 
       %w[forward backward left right].each do |dir|
         turn_score <<  3  if turn.match(/#{@warrior_name} attacks #{dir} and hits/) && !(turn.match(/#{@warrior_name} attacks #{dir} and hits nothing/) || turn.match(/hits Captive/))
-        turn_score << -3  if turn.match(/#{@warrior_name} attacks #{dir} and hits/) && (turn.match(/#{@warrior_name} attacks #{dir} and hits nothing/) || turn.match(/hits Captive/))
-        turn_score <<  50  if turn.match(/#{@warrior_name} unbinds #{dir} and rescues Captive/)         
+        turn_score << -6  if turn.match(/#{@warrior_name} attacks #{dir} and hits/) &&  (turn.match(/#{@warrior_name} attacks #{dir} and hits nothing/) || turn.match(/hits Captive/))
+        turn_score <<  4  if turn.match(/#{@warrior_name} shoots #{dir} and hits/)  && !(turn.match(/#{@warrior_name} shoots #{dir} and hits nothing/) || turn.match(/hits Captive/))
+        turn_score << -8  if turn.match(/#{@warrior_name} shoots #{dir} and hits/)  &&  (turn.match(/#{@warrior_name} shoots #{dir} and hits nothing/) || turn.match(/hits Captive/))
+        turn_score <<  50 if turn.match(/#{@warrior_name} unbinds #{dir} and rescues Captive/)         
       end
 
       #will already have points for forward attack, this is a bonus for successful forward attack
@@ -273,7 +329,7 @@ class Invigilator
       turn_score << -6  if turn.match(/Captive dies/)
       turn_score << -4 if turn.match(/#{@warrior_name} does nothing/)
       turn_score << -4 if turn.match(/#{@warrior_name} walks/) && turn.match(/#{@warrior_name} bumps/)
-      turn_score <<  2 if turn.match(/deathbot walks forward/) && !turn.match(/deathbot bumps/)
+      turn_score <<  2 if turn.match(/#{@warrior_name} walks forward/) && !turn.match(/#{@warrior_name} bumps/)
 
     end
 
@@ -285,11 +341,40 @@ class Invigilator
     bonus = clear_bonus*3 + time_bonus*3 #times three to increase onerous to earn bonuses.
 
 
-    score = level_score + level_total*2 + turn_score + bonus - (n_turns/10)
+    score = (level_score*10) + (level_total*2) + bonus + (turn_score/n_turns.to_f)
     return [score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus]
   end
 
 end
+
+
+
+
+#DrillSergeant provides a way of testing a NN's response to a given input.  It has a method 'test_recruit_on' which takes a hash which defines {input_array => response_array}
+#response_array must include [action, impulse] but can also include an alternative 'code' and different point value ie[:walk, :forward, 'wfd', 2]
+#Several examples can be passed in one test.  .score will return the current score which is an array of accumulated points
+#
+# d = DrillSergeant.new
+# d.recruit = recruit #recruit is a 'brain' from Brains
+# d.test( { 
+#   [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
+#   [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward]
+# )} 
+class DrillSergeant
+  attr_accessor :score, :recruit
+  def initialize 
+    @score = []
+  end
+
+  def test_recruit_on args
+    args.each do |input,response| 
+      code = response[2] || response.map{|s| s.to_s.each_char.map.first}.join #code is str which is output if the input == response
+      points = response[3] || 1 #number of points awarded for input == response, default 1
+      @score << (@recruit.act_on(input).eql?(response[0..1]) ? (print(code);points) : 0)
+    end
+  end
+end
+
 
 #ct = CombatTraining.new(2)
 #ct.ga.population = pop.clone
