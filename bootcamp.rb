@@ -50,6 +50,18 @@ class BasicTraining
     @ga.population = pop
   end
 
+  def remark_on score
+    if score > @highest_score 
+      @highest_score = score
+      print "\t\t<----BestSoFar"
+    elsif score == @highest_score && score > 0
+      print "\t\t<----Combat Ready!!"
+    end
+  end
+
+  def reset_high_score
+    @highest_score = -1000
+  end
 end
 
 
@@ -62,22 +74,21 @@ class BootCamp < BasicTraining
     @ga = MGA.new(:generations => 10000, :mutation_rate => 10, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
       print "#{gen} |"
 
-      recruit = Brains[@n_layers-1].new(@nodes, genome)  
-
-      d = DrillSergeant.new
-      d.recruit = recruit
+      recruit = Brains[@n_layers-1].new(@nodes, genome)  #initialize brain(neural net) with current genome.
+      d = DrillSergeant.new   #initialize a DrillSergeant, a class used to score the brain response to a set of predefined inputs in AssaultCourse
+      d.recruit = recruit     #set the brain to be evaulated
       
      
       #Basic walking drills - move in only available dir
-      d.test_recruit_on(AssaultCourse::BasicManuvers)
+      d.test_recruit_on(AssaultCourse::BasicManuvers)       #learn to walk
       d.test_recruit_on(AssaultCourse::Retreat)
 
       unless d.score.include?(0) 
-        d.test_recruit_on(AssaultCourse::BasicAssault)
-        d.test_recruit_on(AssaultCourse::Recovery ) #learn to recover after fight
-        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #Basic Attack - attack enemy in closed spaces
-        d.test_recruit_on(AssaultCourse::WeaponsTraining)
-        d.test_recruit_on(AssaultCourse::Rescue)  #basic rescue - rescue captive in adjacent sqaure
+        d.test_recruit_on(AssaultCourse::BasicAssault)      #learn to attack in adjacent sqaures
+        d.test_recruit_on(AssaultCourse::Recovery )         #learn to recover when damaged
+        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #learn to attack enemy in closed spaces
+        d.test_recruit_on(AssaultCourse::WeaponsTraining)   #learn to shoot and step back to shoot.
+        d.test_recruit_on(AssaultCourse::Rescue)            #basic rescue - rescue captive in adjacent sqaures
       end
 
       message = "\t\t - Graduated BootCamp!" unless d.score.include?(0) #56
@@ -112,40 +123,56 @@ class CombatTraining < BasicTraining
     reset_high_score
 
     @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-
       print "#{gen}"
+      File.open("./genome", 'w'){|f| f.write( genome.join(",") )} #write the genome to file which Player will use
+      invigilator = Invigilator.new(@warrior_name)  #invigilator class examins output from rubywarrior and assigns points for various actions.  Invigilator#score_results == the fitness function
+      results = `rubywarrior -t 0 -s` #run runywarrior
 
-      genome_file = "./genome"
-      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
-      invigilator = Invigilator.new(@warrior_name)
-      results = `rubywarrior -t 0 -s`
-
-      score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+      #use invigilator to get the final score.  Also returns the break down of points for displaying.
+      score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results(results)
       print " | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
 
-      if score > @highest_score 
-        @highest_score = score
-        print "\t\t<----BestSoFar"
-      elsif score == @highest_score && score > 0
-        print "\t\t<----Combat Ready!!"
-      end
-
-
-      #puts genome.join(",")
+      remark_on score
       puts "."
       score
     })
 
   end
 
-  def reset_high_score
-    @highest_score = -1000
-  end
 end
 
 
-class AgentTraining < BasicTraining
 
+class AgentTraining < BasicTraining
+  def initialize n_layers
+    set_config_for n_layers
+    reset_high_score
+
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+
+      genome_file = "./genome"
+      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
+      invigilator = Invigilator.new(@warrior_name)
+
+      score_sum = 0
+
+      [1,2,3,4,5,6,7,8].each do |i|
+
+        results = `rubywarrior -t 0 -s -l #{i}`
+        score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+        puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+
+        score_sum = score_sum + score
+      end
+   
+      print "#{gen} | Summed Score #{score_sum}"
+      remark_on score_sum
+      #puts genome.join(",")
+      puts "."
+      score_sum
+    })
+
+  end
 end
 
 
@@ -341,7 +368,7 @@ class Invigilator
     bonus = clear_bonus*3 + time_bonus*3 #times three to increase onerous to earn bonuses.
 
 
-    score = (level_score*10) + (level_total*2) + bonus + (turn_score/n_turns.to_f)
+    score = (level_score*10) + (level_total*2) + bonus + (turn_score/n_turns.to_f) - n_turns
     return [score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus]
   end
 

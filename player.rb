@@ -4,11 +4,6 @@ class Player
   def play_turn(warrior)
     @previous_health ||= 20 
 
-    #Statemachine rubbish! - this is NOT AI!
-    #return warrior.rest! if warrior.health < 18 && !warrior.feel.enemy?
-    #return warrior.attack!(:forward) if warrior.feel.enemy?
-    #return warrior.walk!(:forward)
-    
     #nodes = {:in => 15, :inner => 8, :inner2 => 8, :out => 5}
     nodes = {:in => 27, :inner => 8, :out => 8}
     #nodes = {:in => 15, :out => 5}
@@ -20,15 +15,10 @@ class Player
     genome = File.open("./genome", "r"){|f| f.readlines}.join.split(",").map{|s| s.to_f}  
     
         
-    brain = Brains::Type2.new(nodes, genome)  
+    brain = Brains::R2D2.new(nodes, genome)  
     action, impulse = brain.act_on(inputs)
-   
-    #puts inputs.inspect
-    puts impulse.inspect
-    puts action.inspect
-   
+  
     #The Body - send 'impulse' and 'action' from brain to the body
-
     #done inside rescue as brain may request actions the body can't yet do, like rest! in the eariler levels.  
     #no need to program which actions are allowed, evolution will work it out for itself. Yes creationists, this shit actually works!  
     #Once evolved the brain will 'know' what its body is capable of and the rescue should not be needed. 
@@ -40,14 +30,9 @@ class Player
       end
     rescue NoMethodError => e
       puts "body failed to understand brain! #{e.message}"
-    rescue Exception => e
-      puts "ERROR WENT DOWN #{e}"
     end
-
     @previous_health = warrior.health if warrior.respond_to?(:health)
-   
   end
-
 
   def input_array_for warrior
     dirs = [:left, :forward, :right, :backward]
@@ -69,9 +54,8 @@ class Player
       #So when warrior does not respond to :feel it 'imagines' that its in an empty corridor!
     end
 
-
     seen_things = [:nothing, :wall, :captive, :sludge, :thinkslugde, :archer, :wizard]
-    if warrior.respond_to?(:look)
+    if warrior.respond_to?(:look) 
       inputs << dirs.map do |dir|
         #warrior.look(dir).map{|t| (t.empty? || t.wall?) ? 0 : (t.enemy? ? 1 : -1) }
         warrior.look(dir).map{|t| (seen_things.index(t.to_s.downcase.to_sym).to_f/10) * 1.6 }
