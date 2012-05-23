@@ -64,10 +64,51 @@ class BasicTraining
   end
 end
 
+#BootCamp runs the evolution of a population of NNs over training examples from AssaultCourse.
+class BootCamp < BasicTraining
+  attr_accessor :recruit
 
+  #n_layers - define which NN to use 1, 2 or 3 layered.
+  def initialize n_layers = 2 
+    set_config_for n_layers
 
+    @ga = MGA.new(:generations => 100000, :mutation_rate => 10, :gene_length => @gene_length, :popsize => 80, :fitness => Proc.new{|genome, gen|
+      print "#{gen} |"
 
+      @recruit = Brains[@n_layers-1].new(@nodes, genome)  #initialize brain(neural net) with current genome.
+      d = DrillSergeant.new   #initialize a DrillSergeant, a class used to score the brain response to a set of predefined inputs in AssaultCourse
+      d.recruit = @recruit     #set the brain to be evaulated     
 
+      #Basic walking drills - move in only available dir
+      d.test_recruit_on(AssaultCourse::BasicManuvers)       #learn to walk
+      d.test_recruit_on(AssaultCourse::Retreat)
+      d.test_recruit_on(AssaultCourse::BasicAssault)      #learn to attack in adjacent sqaures
+
+      unless d.score.include?(0)
+        d.test_recruit_on(AssaultCourse::Recovery )         #learn to recover when damaged
+        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #learn to attack enemy in closed spaces
+        d.test_recruit_on(AssaultCourse::AdvancedCombat)    #learn to shoot and move toward distant targets
+        d.test_recruit_on(AssaultCourse::Rescue)            #basic rescue - rescue captive in adjacent sqaures
+      end
+      message = "\t\t - Graduated BootCamp!" unless d.score.include?(0) #40
+      score = d.score.sum.to_i
+      #AssaultCourse.points.values.sum
+      print "\t\t- #{score}"
+      print message if message
+      puts " "
+      score
+    }) 
+  end
+
+  def graduate
+    ct = CombatTraining.new(@n_layers)
+    ct.ga.population = @ga.population
+    ct
+  end
+
+end
+
+#CombatTraining runs the evolution of a population of NNs in the current level of rubywarrior.
 class CombatTraining < BasicTraining
 
   def initialize n_layers
@@ -93,6 +134,43 @@ class CombatTraining < BasicTraining
 
 end
 
+#AgentTrainingruns the evolution of a population of NNs over all the levels of rubywarrior in epic mode.
+#Only available once passed epic mode.  
+class AgentTraining < BasicTraining
+  def initialize n_layers
+    set_config_for n_layers
+    reset_high_score
+
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+      puts "#{gen}\n"
+
+      genome_file = "./genome"
+      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
+      invigilator = Invigilator.new(@warrior_name)
+      score_sum = 0
+      threads = []
+      levels = [1,2,3,4,5,6,7,8,9]
+      levels.each do |i|
+        threads << Thread.new{
+          results = `rubywarrior -t 0 -s -l #{i}`
+          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+          instance_variable_set("@ans#{i}", score)
+        }
+      end
+      threads.each{|t| t.join}
+      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
+      puts "\n\t==Summed Score #{score_sum}"
+      remark_on score_sum
+      #puts genome.join(",")
+      puts "."
+      score_sum
+    })
+  end
+end
+
+#FieldTraining runs the evolution of a population of NNs in each level of rubywarrior (non-epic)
+#Requires some setup.  Needs a rubywarrior dir setup for each level named levelxbot where x is the level number.
 class FieldTraining < BasicTraining
 
   def initialize n_layers
@@ -143,82 +221,8 @@ class FieldTraining < BasicTraining
 end
 
 
-class AgentTraining < BasicTraining
-  def initialize n_layers
-    set_config_for n_layers
-    reset_high_score
 
-    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-      genome_file = "./genome"
-      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
-      invigilator = Invigilator.new(@warrior_name)
-      score_sum = 0
-      threads = []
-      levels = [1,2,3,4,5,6,7,8,9]
-      levels.each do |i|
-        threads << Thread.new{
-          results = `rubywarrior -t 0 -s -l #{i}`
-          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
-          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
-          instance_variable_set("@ans#{i}", score)
-        }
-      end
-      threads.each{|t| t.join}
-      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
-      print "#{gen} | Summed Score #{score_sum}"
-      remark_on score_sum
-      #puts genome.join(",")
-      puts "."
-      score_sum
-    })
-  end
-end
-
-class BootCamp < BasicTraining
-  attr_accessor :recruit
-
-  #n_layers - define which NN to use 1, 2 or 3 layered.
-  def initialize n_layers = 2 
-    set_config_for n_layers
-
-    @ga = MGA.new(:generations => 100000, :mutation_rate => 10, :gene_length => @gene_length, :popsize => 80, :fitness => Proc.new{|genome, gen|
-      print "#{gen} |"
-
-      @recruit = Brains[@n_layers-1].new(@nodes, genome)  #initialize brain(neural net) with current genome.
-      d = DrillSergeant.new   #initialize a DrillSergeant, a class used to score the brain response to a set of predefined inputs in AssaultCourse
-      d.recruit = @recruit     #set the brain to be evaulated
-      
-
-      #Basic walking drills - move in only available dir
-      d.test_recruit_on(AssaultCourse::BasicManuvers)       #learn to walk
-      d.test_recruit_on(AssaultCourse::Retreat)
-      d.test_recruit_on(AssaultCourse::BasicAssault)      #learn to attack in adjacent sqaures
-
-      unless d.score.include?(0)
-        d.test_recruit_on(AssaultCourse::Recovery )         #learn to recover when damaged
-        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #learn to attack enemy in closed spaces
-        d.test_recruit_on(AssaultCourse::AdvancedCombat)    #learn to shoot and move toward distant targets
-        d.test_recruit_on(AssaultCourse::Rescue)            #basic rescue - rescue captive in adjacent sqaures
-      end
-      message = "\t\t - Graduated BootCamp!" unless d.score.include?(0) #40
-      score = d.score.sum.to_i
-      #AssaultCourse.points.values.sum
-      print "\t\t- #{score}"
-      print message if message
-      puts " "
-      score
-    }) 
-  end
-
-  def graduate
-    ct = CombatTraining.new(@n_layers)
-    ct.ga.population = @ga.population
-    ct
-  end
-
-end
-
-
+#AssaultCourse defines a set of predefined inputs and thier expected output grouped into a number of constants. 
 class AssaultCourse
   #input mapping; 
   #   < /\ > \/ => left, forward, right, backward
@@ -228,13 +232,11 @@ class AssaultCourse
   # [w<, w/\, w>, w\/, e<, e/\, e>, e\/, c<, c/\, c>, c\/, Ar, Hc, Hp, r]
   # [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 1]
 
-
-  r = 1 #representational bias
-
   def self.points
     AssaultCourse.constants.map{|c| {c => AssaultCourse.const_get(c).size}}.inject{|i,j| i.merge(j)}
   end
 
+  r = 1 #representational bias
 
   BasicManuvers = {
     #[0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :left],
@@ -306,7 +308,8 @@ class AssaultCourse
   }      
 end
 
-
+#Invigilator is used to inspect the results from a run of rubywarrior and calculate a score.
+#It is essentially the fitness function for the GAs.
 class Invigilator
 
   def initialize name = Dir.getwd.split("/").last.sub("-beginner", "")
@@ -382,8 +385,8 @@ end
 # d = DrillSergeant.new
 # d.recruit = recruit #recruit is a 'brain' from Brains
 # d.test( { 
-#   [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
-#   [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward]
+#   [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
+#   [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward]
 # )} 
 class DrillSergeant
   attr_accessor :score, :recruit
@@ -424,91 +427,3 @@ class CrossBreeder
   end
 
 end
-
-
-#ct = CombatTraining.new(2)
-#ct.ga.population = pop.clone
-#ct.train
-
-
-#ga.population = pop
-
-=begin
-
-  @layers = 3
-  require './bootcamp.rb'
-
-  bc = BootCamp.new(@layers)
-  bc.train
-
-
-
-  ct = CombatTraining.new(@layers)
-  ct.ga.population = bc.ga.population
-  ct.train
-
-
-=end
-
-
-#SimpleBrain 
-# got a max of 8 points but not alawys
-# typical score 6-7
-# seems to favor mutation of around 0.8
-
-
-
-#Type2Brain 
-#
-#inner nodes -2
-# capable of scoring 12, with v high mutation (ie 4 genes per genome) and after 50000 gens
-#
-#
-#inner nodes - 5
-# easily scores 8 with a mutation of 0.1 - 0.3
-# got a max of 12 (mutation 0.2 20000 gens)
-#
-#inner nodes -8 
-# got a max of 12 (mutation 0.2 12500 gens)
-# got a max of 12 (mutation 0.2 10100 gens)
-# got a max of 13 (mutation 0.1 10900 gens)  not common <<----
-#
-# typically gets 10-11 around 6000 gens
-#
-#inner nodes - 15
-#
-#got 10 after long evolution.
-#
-#
-
-
-
-#replace population with BootCamp trained population
-#g.population = ga.population
-#g.evolve
-
-
-#select highest scoring member from population and write to file
-#genome = g.ordered_population.first
-
-# genome_file = "/home/sujimichi/coding/lab/rubywarrior/deathbot-beginner/genome"
-# File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
-
-
-
-
-# pop_file = "/home/sujimichi/coding/lab/rubywarrior/deathbot-beginner/lvl4-twolayer-population"
-# require 'json'
-# File.open(pop_file,'w'){|f| f.write( good_pop )}
-# p = File.open(pop_file, "r"){|f| f.readlines}
-# p2 = JSON.parse p.first
-#
-
-
-
-
-#g.population.map{|pop_member| puts pop_member.inspect}
-#puts "\nevolving"
-#g.evolve
-#g.population.map{|pop_member| puts pop_member.inspect}
-
