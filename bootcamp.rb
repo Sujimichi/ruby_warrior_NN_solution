@@ -18,9 +18,9 @@ class BasicTraining
   def set_config_for n_layers
     @warrior_name = Dir.getwd.split("/").last.sub("-beginner", "")
     @n_layers = n_layers
-    nodes_1_layer = {:in => 27, :out => 8}
-    nodes_2_layer = {:in => 27, :inner => 8, :out => 8}
-    nodes_3_layer = {:in => 27, :inner => 8, :inner2 => 8, :out => 8}
+    nodes_1_layer = {:in => 16, :out => 8}
+    nodes_2_layer = {:in => 16, :inner => 6, :out => 8}
+    nodes_3_layer = {:in => 16, :inner => 6, :inner2 => 6, :out => 8}
     @nodes = [nodes_1_layer, nodes_2_layer, nodes_3_layer][@n_layers-1] 
     @gene_length = Brain.required_genome_length_for(nodes)
   end
@@ -65,54 +65,6 @@ class BasicTraining
 end
 
 
-class BootCamp < BasicTraining
-
-  #n_layers - define which NN to use 1, 2 or 3 layered.
-  def initialize n_layers = 2 
-    set_config_for n_layers
-
-    @ga = MGA.new(:generations => 10000, :mutation_rate => 10, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-      print "#{gen} |"
-
-      recruit = Brains[@n_layers-1].new(@nodes, genome)  #initialize brain(neural net) with current genome.
-      d = DrillSergeant.new   #initialize a DrillSergeant, a class used to score the brain response to a set of predefined inputs in AssaultCourse
-      d.recruit = recruit     #set the brain to be evaulated
-      
-     
-      #Basic walking drills - move in only available dir
-      d.test_recruit_on(AssaultCourse::BasicManuvers)       #learn to walk
-      d.test_recruit_on(AssaultCourse::Retreat)
-
-      unless d.score.include?(0) 
-        d.test_recruit_on(AssaultCourse::BasicAssault)      #learn to attack in adjacent sqaures
-        d.test_recruit_on(AssaultCourse::Recovery )         #learn to recover when damaged
-        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #learn to attack enemy in closed spaces
-        d.test_recruit_on(AssaultCourse::WeaponsTraining)   #learn to shoot and step back to shoot.
-        d.test_recruit_on(AssaultCourse::Rescue)            #basic rescue - rescue captive in adjacent sqaures
-      end
-
-      message = "\t\t - Graduated BootCamp!" unless d.score.include?(0) #56
-
-      score = d.score.sum.to_i
-
-      #AssaultCourse.points.values.sum
-
-      print "\t\t- #{score}"
-      print message if message
-      puts " "
-      score
-
-    }) 
-
-  end
-
-  def graduate
-    ct = CombatTraining.new(@n_layers)
-    ct.ga.population = @ga.population
-    ct
-  end
-
-end
 
 
 
@@ -141,6 +93,54 @@ class CombatTraining < BasicTraining
 
 end
 
+class FieldTraining < BasicTraining
+
+  def initialize n_layers
+    set_config_for n_layers
+    reset_high_score
+
+    #levels = [1,2,3,4,5,6,7,8,9]
+    levels = [1,2,3,4,5,6,7]
+
+    rootdir = "/home/sujimichi/coding/lab/rubywarrior"
+
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+      puts "#{gen}\n"
+      Dir.chdir(rootdir)
+    
+      threads = []
+      levels.each do |lvl|
+        Dir.chdir("#{rootdir}/level#{lvl}bot-beginner")
+        File.open("./genome", 'w'){|f| f.write( genome.join(",") )} #write the genome to file which Player will use
+        
+
+        threads << Thread.new {         
+          invigilator = Invigilator.new(@warrior_name)  #invigilator class examins output from rubywarrior and assigns points for various actions.  Invigilator#score_results == the fitness function
+          #puts "in dir #{Dir.getwd}"
+          results = `rubywarrior -t 0 -s` #run runywarrior
+          #use invigilator to get the final score.  Also returns the break down of points for displaying.
+          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results(results)
+          puts "level-#{lvl}|levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+          instance_variable_set("@ans#{lvl}", score)
+        }
+        sleep(0.5)
+  
+      end
+      threads.each{|t| t.join}
+
+      score_sum = levels.map{|lvl| instance_variable_get("@ans#{lvl}")}.compact.sum
+       
+      puts "| Summed Score #{score_sum}"
+      remark_on score_sum
+      puts "."
+      score_sum
+
+    })
+
+  end
+
+
+end
 
 
 class AgentTraining < BasicTraining
@@ -149,46 +149,84 @@ class AgentTraining < BasicTraining
     reset_high_score
 
     @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-
       genome_file = "./genome"
       File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
       invigilator = Invigilator.new(@warrior_name)
-
       score_sum = 0
-
-      [1,2,3,4,5,6,7,8].each do |i|
-
-        results = `rubywarrior -t 0 -s -l #{i}`
-        score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
-        puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
-
-        score_sum = score_sum + score
+      threads = []
+      levels = [1,2,3,4,5,6,7,8,9]
+      levels.each do |i|
+        threads << Thread.new{
+          results = `rubywarrior -t 0 -s -l #{i}`
+          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+          instance_variable_set("@ans#{i}", score)
+        }
       end
-   
+      threads.each{|t| t.join}
+      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
       print "#{gen} | Summed Score #{score_sum}"
       remark_on score_sum
       #puts genome.join(",")
       puts "."
       score_sum
     })
-
   end
+end
+
+class BootCamp < BasicTraining
+  attr_accessor :recruit
+
+  #n_layers - define which NN to use 1, 2 or 3 layered.
+  def initialize n_layers = 2 
+    set_config_for n_layers
+
+    @ga = MGA.new(:generations => 100000, :mutation_rate => 10, :gene_length => @gene_length, :popsize => 80, :fitness => Proc.new{|genome, gen|
+      print "#{gen} |"
+
+      @recruit = Brains[@n_layers-1].new(@nodes, genome)  #initialize brain(neural net) with current genome.
+      d = DrillSergeant.new   #initialize a DrillSergeant, a class used to score the brain response to a set of predefined inputs in AssaultCourse
+      d.recruit = @recruit     #set the brain to be evaulated
+      
+
+      #Basic walking drills - move in only available dir
+      d.test_recruit_on(AssaultCourse::BasicManuvers)       #learn to walk
+      d.test_recruit_on(AssaultCourse::Retreat)
+      d.test_recruit_on(AssaultCourse::BasicAssault)      #learn to attack in adjacent sqaures
+
+      unless d.score.include?(0)
+        d.test_recruit_on(AssaultCourse::Recovery )         #learn to recover when damaged
+        d.test_recruit_on(AssaultCourse::CloseQuaterCombat) #learn to attack enemy in closed spaces
+        d.test_recruit_on(AssaultCourse::AdvancedCombat)    #learn to shoot and move toward distant targets
+        d.test_recruit_on(AssaultCourse::Rescue)            #basic rescue - rescue captive in adjacent sqaures
+      end
+      message = "\t\t - Graduated BootCamp!" unless d.score.include?(0) #40
+      score = d.score.sum.to_i
+      #AssaultCourse.points.values.sum
+      print "\t\t- #{score}"
+      print message if message
+      puts " "
+      score
+    }) 
+  end
+
+  def graduate
+    ct = CombatTraining.new(@n_layers)
+    ct.ga.population = @ga.population
+    ct
+  end
+
 end
 
 
 class AssaultCourse
   #input mapping; 
   #   < /\ > \/ => left, forward, right, backward
-  #   Hc, Hp => Health_current, Health_previous
+  #   Hc, Hp, Ar => Health_current, Health_previous and Armed?
   #   r => representational bias
-  #   #vision(look) - each direction has three inputs, closest, further, furthest denoted by numbner of symbols ie:
-  #   <, <<, <<< for left || /\, //\\, ///\\\ for forward - closest, further and furthest respectivly
   #
-  # [w<, w/\, w>, w\/, e<, e/\, e>, e\/, c<, c/\, c>, c\/, <, <<, <<<, /\, //\\, ///\\\, >, >>, >>>, \/, \\//, \\\///, Hc, Hp, r]
-  # [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0,|0, 0, 0,|0, -1, 1,|0, 0, 0,|0, 0, 0,|0.0, 0, 1]
-
-  # [:nothing, :wall, :captive, :sludge, :thinkslugde, :archer, :wizard]
-  # [0.0, 0.16, 0.32, 0.48, 0.64, 0.8, 0.96] 
+  # [w<, w/\, w>, w\/, e<, e/\, e>, e\/, c<, c/\, c>, c\/, Ar, Hc, Hp, r]
+  # [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 1]
 
 
   r = 1 #representational bias
@@ -199,112 +237,72 @@ class AssaultCourse
 
 
   BasicManuvers = {
-    [0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :left],
-    [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
-    [1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :right],
-    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward],
+    #[0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :left],
+    [1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward],
+    #[1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :right],
+    [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :backward],
 
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, '0wf'], #Dont just sit there, do something.
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, 'fwc']
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, '0wf'], #Dont just sit there, do something.
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:walk, :forward, 'fwc']
   }
 
   Retreat = {
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],   #walls either side T infront, health low, being shot at -> retreat
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR']   #walls either side T infront, health low, being shot at -> retreat  
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR1'],  #walls either side T infront, health low -> retreat
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR2'],   #walls either side T infront, health low, being shot at -> retreat
   }
 
   #Basic Attack - attack enemy in adjacent squares when in open space
   BasicAssault = {
-    #blind
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :left],         
-    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward],
-    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :right],
-    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :backward],
-    #with vision
-    [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :left],         
-    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward],
-    [0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :right],
-    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 0, 0, 0, 0, r] => [:attack, :backward]
+    #[0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :left],         
+    [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward],
+    #[0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :right],
+    [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :backward],
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'af2'],  #attack forward with walls either side
+    [1, 0, 1, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 1, 0.0, 0, r] => [:shoot, :forward, 'SF1']
   }
 
   #learn to recover after fight
   Recovery = {
-    #blind
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.90, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.80, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.70, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.60, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.50, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.40, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.90, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.80, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.70, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.60, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.50, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.40, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
 
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.40, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.20, 1, r] => [:walk, :forward, 'WFD2'],  #limp on if only slightly hurt and under fire
-
-    #with vision
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.90, 0, r] => [:rest, :rest, 'R9'],  #recover from 90% damage
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.80, 0, r] => [:rest, :rest, 'R8'],  #recover from 80% damage  
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.70, 0, r] => [:rest, :rest, 'R7'],  #recover from 70% damage  
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.60, 0, r] => [:rest, :rest, 'R6'],  #recover from 50% damage        
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.50, 0, r] => [:rest, :rest, 'R5'],  #recover from 50% damage  
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.40, 0, r] => [:rest, :rest, 'R4'],  #recover from 40% damage  
-
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.40, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.20, 1, r] => [:walk, :forward, 'WFD2']  #limp on if only slightly hurt and under fire     
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.65, 1, r] => [:walk, :forward, 'WFD0'], #limp on if only slightly hurt and under fire (specific example from level 4)
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.40, 1, r] => [:walk, :forward, 'WFD1'], #limp on if only slightly hurt and under fire
+    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.20, 1, r] => [:walk, :forward, 'WFD2'],  #limp on if only slightly hurt and under fire
+   
   }
-
+  
   CloseQuaterCombat =  {
-    #blind
-    [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
+    [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking          
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
+    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
+  } 
 
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking          
+  AdvancedCombat = {
+    [1, 0, 1, 0, 0, 0.0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:walk, :forward, 'mv0'],  #walk toward distant target    
+    [1, 0, 1, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:walk, :forward, 'mv1'],  #walk toward distant target
+    [1, 0, 1, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:walk, :forward, 'mv2'],  #walk toward distant target
+    [1, 0, 1, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, r] => [:attack, :forward, 'AF0'],  #attack forward with vision but no gun
+    
+    [1, 0, 1, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 1, 0.0, 0, r] => [:shoot, :forward, 'SF1'],  #walls either side high_threat target in distance infront        
+    [1, 0, 1, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 1, 0.2, 1, r] => [:shoot, :forward, 'SF2'],  #walls either side high_threat target in distance infront        
+    [1, 0, 1, 0, 0, 0.6, 0, 0, 0, 0, 0, 0, 1, 0.4, 1, r] => [:shoot, :forward, 'SF3'],  #walls either side high_threat target in distance infront        
 
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
-
-    #[1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
-    #[1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],   #walls either side T infront, health low, being shot at -> retreat
-
-
-    #with vision
-    [1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 0, 0, 3, 0, 0, 0.0, 0, r] => [:pivot,  :backward, 'PV'],  #watch your back maggot!
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:attack, :forward, 'AF1'],  #walls either side T infront
-
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.1, 1, r] => [:attack, :forward, 'AF2'],  #walls either side T infront attacking          
-
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.3, 1, r] => [:attack, :forward, 'AF3'],  #walls either side T infront attacking
-    [1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.5, 1, r] => [:attack, :forward, 'AF4'],  #walls either side T infront attacking
-
-    #[1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.4, 0, 0, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR'],  #walls either side T infront, health low -> retreat
-    #[1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0, 0, 0.4, 0.1, 0, 0, 0, 0, 0, 0.9, 1, r] => [:walk, :backward, 'RetR']   #walls either side T infront, health low, being shot at -> retreat
-
-    #[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF2'],  #walls to left T infront
-    #[0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:attack, :forward, 'AF3']   #walls to right T infront
-  }
-
-  WeaponsTraining = {
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.0, 0.0, 0.9, 0.1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:shoot, :forward, 'SF1'],  #walls either side high_threat target in distance infront        
-    [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.1, 0, 0, 0.0, 0.9, 0.0, 0.1, 0, 0, 0, 0, 0, 0.0, 0, r] => [:walk, :backward, 'aim1'],
-
+    #[1, 0, 1, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 1, 0.0, 0, r] => [:walk, :backward, 'AIM1'],
+    #[1, 0, 1, 0, 0, 1.0, 0, 0, 0, 0, 0, 0, 1, 0.2, 1, r] => [:walk, :backward, 'AIM2']    
   }
 
   Rescue =  {
-    #blind
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :left],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :forward],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :right],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :backward],          
-
-    #with vision
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :left],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :forward],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, 0, 0, 0, r] => [:rescue, :right],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.3, 0, 0, 0, 0, r] => [:rescue, :backward]
-
+    #[0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, r] => [:rescue, :left],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, r] => [:rescue, :forward],
+    #[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, r] => [:rescue, :right],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, r] => [:rescue, :backward],          
   }      
 end
 
@@ -368,7 +366,7 @@ class Invigilator
     bonus = clear_bonus*3 + time_bonus*3 #times three to increase onerous to earn bonuses.
 
 
-    score = (level_score*10) + (level_total*2) + bonus + (turn_score/n_turns.to_f) - n_turns
+    score = level_score + level_total + bonus + (turn_score/n_turns.to_f)
     return [score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus]
   end
 
@@ -400,6 +398,31 @@ class DrillSergeant
       @score << (@recruit.act_on(input).eql?(response[0..1]) ? (print(code);points) : 0)
     end
   end
+end
+
+
+class CrossBreeder
+  attr_accessor :genomes
+
+  def read_genomes
+    d = Dir.getwd
+    Dir.chdir("genomes by level")
+    files = Dir.open(".").to_a.select{|f| f.include?("genome")}
+
+    @genomes = files.map do |file|
+      File.open(file, "r"){|f| f.readlines}.join.split(",").map{|s| s.to_f}
+    end
+    Dir.chdir(d)
+  end
+
+  def make_pop size = 80
+    read_genomes unless @genomes
+    n = size/@genomes.size
+    pop = []
+    n.times{ @genomes.each{|genome| pop << genome} }
+    pop
+  end
+
 end
 
 

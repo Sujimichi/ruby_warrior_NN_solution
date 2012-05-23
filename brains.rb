@@ -31,9 +31,9 @@ class Brain
     #The other nodes each represent an action.  Which ever node is stimulated most is the action taken.
     actions = [[:walk, output[2]], [:attack, output[3]], [:rest, output[4]], [:rescue, output[5]], [:pivot, output[6]], [:shoot, output[7]]]
     action = actions.max_by{|grp| grp.last}.first 
-    impulse = :rest if action.eql?(:rest)
+    impulse = :rest if action.eql?(:rest) #rest is the only non-directional action
 
-    impulse = :backward if action.eql?(:pivot) #can i get away without this?
+    #impulse = :backward if action.eql?(:pivot) #can i get away without this?
   
     return [action, impulse]
   end

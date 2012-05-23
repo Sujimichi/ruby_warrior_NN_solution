@@ -15,6 +15,7 @@ class MGA
   end
 
   def evolve
+    @popsize = @population.size #incase population was replaced with diff sized one.
     @generations.times do |current_generation|
       @current_generation += 1
       select = (0..@popsize-1).sort_by{rand}[0,2].sort_by {|ind| fitness(@population[ind]) }.reverse
