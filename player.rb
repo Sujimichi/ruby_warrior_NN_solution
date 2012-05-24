@@ -43,7 +43,7 @@ class Player
     if warrior.respond_to?(:feel)
       inputs = things.map do |thing|
         dirs.map do |dir|
-          v = (warrior.feel(dir).send("#{thing}?").eql?(true) ? 1 : 0) if warrior.respond_to?(:feel)
+          v = (warrior.feel(dir).send("#{thing}?").eql?(true) ? 1 : 0) 
           if warrior.respond_to?(:look)
             look = warrior.look(dir)
             v = v + look.map{|l| (l.send("#{thing}?").eql?(true) ? 1 : 0) * vis_scale[look.index(l)] }.max

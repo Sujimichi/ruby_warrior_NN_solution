@@ -28,26 +28,44 @@ class BasicTraining
   def train
     @ga.evolve
   end
+  alias run train
 
   def write_best
     genome = @ga.best
     File.open("./genome",'w'){|f| f.write( genome.join(",") )}
   end
 
-  def save_pop
-    puts "enter a file name for population"
-    f_name = gets.chomp #lvl4-twolayer-population
-    return "no filename" if f_name.nil? || f_name.empty?
-    pop_file = "./#{f_name}"
-    File.open(pop_file,'w'){|f| f.write( @ga.population )}
-
+  def population
+    @ga.population
   end
+  def population= new_population
+    @ga.population = new_population
+  end
+
+  def save_pop
+    PopBuilder.save_pop(@ga.population)
+  end
+
   def load_pop f_name
-    require 'json'
-    pop_file = "./#{f_name}"
-    p = File.open(pop_file, "r"){|f| f.readlines}
-    pop = JSON.parse p.first
+    pop = PopBuilder.load_pop(f_name)
     @ga.population = pop
+  end
+
+  def build_pop_from pop_size = 30, genome_dir = "genomes by level"
+    builder = PopBuilder.new
+    builder.read_genomes genome_dir
+    pop = builder.make_pop(pop_size)
+    @ga.population = pop
+    @ga.popsize = pop.size
+    @ga
+  end
+  alias build_pop build_pop_from
+
+  def mutation_rate mutation_rate = nil
+    orig_m = @ga.mutation_rate
+    return orig_m if mutation_rate.nil?
+    @ga.mutation_rate = mutation_rate
+    puts "mutation rate changed; #{orig_m} => #{mutation_rate}"
   end
 
   def remark_on score
@@ -60,7 +78,7 @@ class BasicTraining
   end
 
   def reset_high_score
-    @highest_score = -1000
+    @highest_score = -10000
   end
 end
 
@@ -134,40 +152,6 @@ class CombatTraining < BasicTraining
 
 end
 
-#AgentTrainingruns the evolution of a population of NNs over all the levels of rubywarrior in epic mode.
-#Only available once passed epic mode.  
-class AgentTraining < BasicTraining
-  def initialize n_layers
-    set_config_for n_layers
-    reset_high_score
-
-    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-      puts "#{gen}\n"
-
-      genome_file = "./genome"
-      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
-      invigilator = Invigilator.new(@warrior_name)
-      score_sum = 0
-      threads = []
-      levels = [1,2,3,4,5,6,7,8,9]
-      levels.each do |i|
-        threads << Thread.new{
-          results = `rubywarrior -t 0 -s -l #{i}`
-          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
-          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
-          instance_variable_set("@ans#{i}", score)
-        }
-      end
-      threads.each{|t| t.join}
-      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
-      puts "\n\t==Summed Score #{score_sum}"
-      remark_on score_sum
-      #puts genome.join(",")
-      puts "."
-      score_sum
-    })
-  end
-end
 
 #FieldTraining runs the evolution of a population of NNs in each level of rubywarrior (non-epic)
 #Requires some setup.  Needs a rubywarrior dir setup for each level named levelxbot where x is the level number.
@@ -177,8 +161,8 @@ class FieldTraining < BasicTraining
     set_config_for n_layers
     reset_high_score
 
-    #levels = [1,2,3,4,5,6,7,8,9]
-    levels = [1,2,3,4,5,6,7]
+    @initial_dir = Dir.getwd
+    levels = [1,2,3,4,5,6,7,8,9]
 
     rootdir = "/home/sujimichi/coding/lab/rubywarrior"
 
@@ -193,25 +177,29 @@ class FieldTraining < BasicTraining
         
 
         threads << Thread.new {         
-          invigilator = Invigilator.new(@warrior_name)  #invigilator class examins output from rubywarrior and assigns points for various actions.  Invigilator#score_results == the fitness function
-          #puts "in dir #{Dir.getwd}"
+          invigilator = Invigilator.new #invigilator class examins output from rubywarrior and assigns points for various actions.  Invigilator#score_results == the fitness function
           results = `rubywarrior -t 0 -s` #run runywarrior
           #use invigilator to get the final score.  Also returns the break down of points for displaying.
           score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results(results)
           puts "level-#{lvl}|levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
-          instance_variable_set("@ans#{lvl}", score)
+          instance_variable_set("@ans#{lvl}", score) #set result in an @var ie @ans1.  Done so threads don't try to write answer to a common var.
+          Dir.chdir(@initial_dir)
         }
-        sleep(0.5)
+        sleep(0.5) #This sleep is a horrible hack arround the problem of current directory not being thread safe.
+        #For each level it first changes into the levels directory and then runs rubywarrior in a new Thread.  Then sleeps.  
+        #After the sleep it moves the the next level and moves to its dir and again runs rubywarrior in a new Thread.  
+        #Without the sleep all the threads would be started almost at the same time and would start in which ever directory was now the current directory.
+        #This could cause the first level's rubywarrior command to be called in the next levels dir.
   
       end
       threads.each{|t| t.join}
 
-      score_sum = levels.map{|lvl| instance_variable_get("@ans#{lvl}")}.compact.sum
-       
+      score_sum = levels.map{|lvl| instance_variable_get("@ans#{lvl}")}.compact.sum #collect up and sum the defined @vars with the results.
       puts "| Summed Score #{score_sum}"
       remark_on score_sum
       puts "."
       score_sum
+
 
     })
 
@@ -220,6 +208,40 @@ class FieldTraining < BasicTraining
 
 end
 
+#AgentTrainingruns the evolution of a population of NNs over all the levels of rubywarrior in epic mode.
+#Only available once passed epic mode.  
+class AgentTraining < BasicTraining
+  def initialize n_layers
+    set_config_for n_layers
+    reset_high_score
+
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+      puts "#{gen}\n"
+
+      genome_file = "./genome"
+      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
+      
+      score_sum = 0
+      threads = []
+      levels = [1,2,3,4,5,6,7,8,9]
+      levels.each do |i|
+        threads << Thread.new{
+          results = `rubywarrior -t 0 -s -l #{i}`
+          invigilator = Invigilator.new
+          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+          instance_variable_set("@ans#{i}", score)
+        }
+      end
+      threads.each{|t| t.join}
+      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
+      puts "\n\t==Summed Score #{score_sum}"
+      remark_on score_sum
+      puts "."
+      score_sum
+    })
+  end
+end
 
 
 #AssaultCourse defines a set of predefined inputs and thier expected output grouped into a number of constants. 
@@ -350,7 +372,7 @@ class Invigilator
         turn_score <<  50 if turn.match(/#{@warrior_name} unbinds #{dir} and rescues Captive/)         
       end
 
-      #will already have points for forward attack, this is a bonus for successful forward attack
+      #will already have points for forward attack, this is a bonus for successful *forward* attack
       turn_score <<  1  if turn.match(/#{@warrior_name} attacks forward and hits/) && !(turn.match(/#{@warrior_name} attacks forward and hits nothing/) || turn.match(/hits Captive/))
 
 
@@ -404,14 +426,14 @@ class DrillSergeant
 end
 
 
-class CrossBreeder
+
+class PopBuilder
   attr_accessor :genomes
 
-  def read_genomes
+  def read_genomes genome_dir = "genomes by level"
     d = Dir.getwd
-    Dir.chdir("genomes by level")
+    Dir.chdir(genome_dir)
     files = Dir.open(".").to_a.select{|f| f.include?("genome")}
-
     @genomes = files.map do |file|
       File.open(file, "r"){|f| f.readlines}.join.split(",").map{|s| s.to_f}
     end
@@ -426,4 +448,30 @@ class CrossBreeder
     pop
   end
 
+  def get_best pop, ga, best_n = 10
+    pop.sort_by{|m| ga.fitness(m)}.reverse[0..best_n] 
+  end
+
+  def combine_best_from pops, ga, end_size = nil
+    @genomes = pops.map{|pop| get_best(pop,ga) }.flatten
+    end_size = @genomes.size * 2 if end_size.nil?
+    make_pop(end_size)    
+  end
+
+  def self.load_pop f_name
+    require 'json'
+    pop_file = "./#{f_name}"
+    pop = File.open(pop_file, "r"){|f| f.readlines}
+    JSON.parse pop.first
+  end
+
+  def self.save_pop population
+    puts "enter a file name for population"
+    f_name = gets.chomp 
+    return "no filename" if f_name.nil? || f_name.empty?
+    pop_file = "./#{f_name}"
+    File.open(pop_file,'w'){|f| f.write( population )}   
+  end
+
 end
+
