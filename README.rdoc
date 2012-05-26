@@ -62,11 +62,7 @@ The full set of 16 inputs might be something like;
      -----------
 
 ====The Brain
-The Brain class has a method :act_on which takes the input array.  The inputs are passed to an instance of the NeuralNetwork class which will have been setup according to which Brain is used.
-
-
-
-The response from the neural network is an array of 8 values.  These eight values or nodes represent different actions on the warrior.  The first two nodes select an 'impulse' while the others select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the first nodes absolute value is greater than the seconds it takes the forward/backward impulse, otherwise it takes the left/right impulse.
+The Brain class has a method :act_on which takes the input array and passes them to an instance an instance of NeuralNetwork.  The network calculates its response which is returned as an array of 8 values.  These eight values or nodes represent different actions on the warrior.  The first two nodes select an 'impulse' while the others select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the first nodes absolute value is greater than the seconds it takes the forward/backward impulse, otherwise it takes the left/right impulse.
 
 The other 6 nodes each represent an action; :walk, :attack, :rest, :rescue, :pivot, :shoot respectivly (the order was not important).  Which ever of these nodes has the strongest stimulation (highest value) will be the action taken.
 
