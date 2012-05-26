@@ -106,7 +106,7 @@ class NeuralNetwork
 end
 
 #A NeuralLayer is a single layer of a neural network, or on its own just a single layer network (SLP - single layer perceptron)
-#It is initialized with an Array of weights; an Array of Arrays, size of outer array defines number of output nodes, inner array size defines input nodes.
+#It is initialized with an Array of weights which is an Array of Arrays, size of outer array defines number of output nodes, inner array size defines input nodes.
 #ie: [[0,0,0],[0,1,0]] might be the weights for a layer with 3 inputs and 2 outputs.
 class NeuralLayer
   def initialize weights 
@@ -115,7 +115,7 @@ class NeuralLayer
   end
  
   #process takes an Array of inputs and returns the networks response (output node values).
-  #The value of each output node is the sum of each input multipled by the coresponding weight (and passed through an 'Activation Function', in this case just a sin function.  
+  #The value of each output node is the sum of each input multipled by the coresponding weight (and passed through an 'Activation Function', in this case a sin function.  
   def process inputs
     raise "input size error" if inputs.size != @weights.first.size
     @nodes[:output].times.map{ |i| inputs.zip(@weights[i]).map{|d| d.product_with_activation}.sum.round(2) } #<---Main NN calculation step.  
