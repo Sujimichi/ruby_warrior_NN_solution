@@ -10,13 +10,13 @@ require "./darwin.rb"
 #CombatTraining - used to evolve NN's in a rubywarrior level
 #The performance of the NN in the rubywarrior level is determined by Invigilator
 #
+#AgentTraining - used to evolve NN's over all levels in rubywarrior EPIC mode.
+#requires epic unlocked.
+#
 #FieldTraining - used to evolve NN's over several/all rubywarrior levels.
 #requires some setup and levels to be unlocked; A specific rubywarrior folder needs to be created for each level according to a naming convention see FieldTraining for more.
 #
-#AgentTraining - used to evolve NN's in rubywarrior EPIC mode.
-#requires epic unlocked.
-#
-#Field and Agent use Threads to evaluate a NN's performance in all levels together, thier output gets a bit nutts at times ;)
+#Agent and Field use Threads to evaluate a NN's performance in all levels together, thier output gets a bit nutts at times ;)
 #
 #All four training grounds inherit from BasicTraining 
 #Provides some common methods for runnning evolution, saving/loading/autosaving populations to file and some getting/setter methods for the GA (population,muation_rate)
@@ -158,7 +158,7 @@ class BasicTraining
   end
 
   def graduate
-    training_grounds = [BootCamp, CombatTraining, FieldTraining, AgentTraining]
+    training_grounds = [BootCamp, CombatTraining, AgentTraining, FieldTraining]
     cur_pos = training_grounds.index(self.class)
     return "No more training grounds, run write_best and go kick RW's ass!" if cur_pos >= training_grounds.size-1
     new_training_groud = training_grounds[cur_pos.next].new(@n_layers)
@@ -237,6 +237,44 @@ class CombatTraining < BasicTraining
 end
 
 
+#AgentTrainingruns the evolution of a population of NNs over all the levels of rubywarrior in epic mode.
+#Only available once passed epic mode.  
+class AgentTraining < BasicTraining
+  def initialize n_layers = 2
+    @auto_save_every_n_generations = 100
+    @target_score = 842
+    set_config_for n_layers
+    reset_high_score
+
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+      puts "#{gen}\n"
+
+      genome_file = "./genome"
+      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
+      
+      score_sum = 0
+      threads = []
+      levels = [1,2,3,4,5,6,7,8,9]
+      levels.each do |i|
+        threads << Thread.new{
+          results = `rubywarrior -t 0 -s -l #{i}`
+          invigilator = Invigilator.new
+          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
+          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+          instance_variable_set("@ans#{i}", score)
+        }
+      end
+      threads.each{|t| t.join}
+      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
+      puts "\n\t==Summed Score #{score_sum}"
+      remark_on score_sum
+      puts "."
+      score_sum
+    })
+  end
+end
+
+
 #FieldTraining runs the evolution of a population of NNs in each level of rubywarrior (non-epic)
 #Requires some setup.  Needs a rubywarrior dir setup for each level named levelxbot where x is the level number.
 class FieldTraining < BasicTraining
@@ -261,7 +299,7 @@ class FieldTraining < BasicTraining
       puts "\n\n"
     
       threads = []
-      levels.each do |lvl|
+      levels.sort_by{rand}.each do |lvl|
         Dir.chdir("#{rootdir}/level#{lvl}bot-beginner")
         File.open("./genome", 'w'){|f| f.write( genome.join(",") )} #write the genome to file which Player will use
         
@@ -300,43 +338,6 @@ class FieldTraining < BasicTraining
   end
 
 
-end
-
-#AgentTrainingruns the evolution of a population of NNs over all the levels of rubywarrior in epic mode.
-#Only available once passed epic mode.  
-class AgentTraining < BasicTraining
-  def initialize n_layers = 2
-    @auto_save_every_n_generations = 100
-    @target_score = 842
-    set_config_for n_layers
-    reset_high_score
-
-    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
-      puts "#{gen}\n"
-
-      genome_file = "./genome"
-      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
-      
-      score_sum = 0
-      threads = []
-      levels = [1,2,3,4,5,6,7,8,9]
-      levels.each do |i|
-        threads << Thread.new{
-          results = `rubywarrior -t 0 -s -l #{i}`
-          invigilator = Invigilator.new
-          score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
-          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
-          instance_variable_set("@ans#{i}", score)
-        }
-      end
-      threads.each{|t| t.join}
-      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
-      puts "\n\t==Summed Score #{score_sum}"
-      remark_on score_sum
-      puts "."
-      score_sum
-    })
-  end
 end
 
 

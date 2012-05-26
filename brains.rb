@@ -8,40 +8,32 @@ end
 
 class Brain
   class Migraine < Exception;end
-
   #act_on takes inputs from world sensors as an array which is presented to the neural network in @network
-  #the neural network in @network will return an output array which act_on will interpret into an 'action' and an 'impulse' 
-  #(returned as array [action, impulse]
+  #the neural network in @network will return an output array which act_on will interpret into an 'action' and an 'impulse'; returned as array [action, impulse]
   #The action is one of the warriors err actions (duh), the impulse is the direction to perform that action. ie: [:walk, :forward]
   def act_on inputs
+    output = @network.process(inputs) #send inputs to neural net and return result as array of values (nodes).     
 
-    #send inputs to neural net and return result.
-    output = @network.process(inputs) 
-   
-    #First two output nodes of network will define impulse.  Impulse is the direction for an action ie walk!(:forward) or attack!(:left)
-    #First node represents impulse to go forward or backwards, +ive => forward, -ive backward.
-    #Second node represents impulse to go left or right, , +ive => left, -ive right.
-    #which ever impulse (forward/back or left/right) is absolutely stronger will be the one taken
+    #First node represents impulse to go forward or backwards, +ive => forward, -ive backward.  Second node represents impulse to go left or right, , +ive => left, -ive right.
+    #Which ever impulse (forward/back or left/right) is absolutely stronger will be the one taken
     if output[0].abs > output[1].abs #moving forward or backwards
       impulse = (output[0] > 0) ? :forward : :backward
     else #moving left or right
       impulse = (output[1] > 0) ? :left : :right
     end
     
-    #The other nodes each represent an action.  Which ever node is stimulated most is the action taken.
+    #The other nodes each represent an action.  Which ever node is stimulated most is the action taken.  Order of outputs was not considered.  NN will have to evolve to figure it out.
     actions = [[:walk, output[2]], [:attack, output[3]], [:rest, output[4]], [:rescue, output[5]], [:pivot, output[6]], [:shoot, output[7]]]
-    action = actions.max_by{|grp| grp.last}.first 
-    impulse = :rest if action.eql?(:rest) #rest is the only non-directional action
-
-    #impulse = :backward if action.eql?(:pivot) #can i get away without this?
-  
-    return [action, impulse]
+    action = actions.max_by{|grp| grp.last}.first #order actions by largest output value and select
+    impulse = :rest if action.eql?(:rest) #rest is the only non-directional action (this line is only needed by assertions in BootCamp, not core to solutions funtion)
+    
+    [action, impulse] #return the action and impulse
   end
 
   #check that the genome is appropriate size for given nodes and raise exception if not.
   def sane? 
     rs = Brain.required_genome_length_for(@nodes)
-    raise Migraine.new("genome is incorrect size for node configutation.  Genome should be #{rs} bits, it is #{@genome.size}") unless @genome.size.eql?(rs)
+    raise Migraine.new("genome is incorrect size for node configutation.  Genome should be #{rs} genes, it is #{@genome.size}") unless @genome.size.eql?(rs)
   end
 
   #return the expected genome length based on the number of nodes in the network.
@@ -65,9 +57,9 @@ end
 class Brains::Neanderthal < Brain 
   def initialize nodes, genome
     @nodes, @genome = nodes, genome
-    self.sane?
-    weights = genome.in_groups_of(nodes[:in]) 
-    @network = NeuralNetwork.new([NeuralLayer.new(weights)])
+    self.sane? #check genome size is ok
+    weights = genome.in_groups_of(nodes[:in]) #split the genome into as many groups as there are inputs 
+    @network = NeuralNetwork.new([NeuralLayer.new(weights)]) #initialize NeuralNetwork with 1 NeuralLayer 
   end
 end
 
@@ -76,11 +68,11 @@ end
 class Brains::R2D2 < Brain
   def initialize nodes, genome
     @nodes, @genome = nodes, genome
-    self.sane?
-    p1 = (nodes[:in] * nodes[:inner])
-    weights1 = genome[0..p1-1].in_groups_of(nodes[:in])
-    weights2 = genome[p1..(genome.size-1)].in_groups_of(nodes[:inner])
-    @network = NeuralNetwork.new([NeuralLayer.new(weights1), NeuralLayer.new(weights2)])
+    self.sane? #check genome size is ok
+    p1 = (nodes[:in] * nodes[:inner]) #number of genes(weights) needed for first layer
+    weights1 = genome[0..p1-1].in_groups_of(nodes[:in]) #get weights for the first layer
+    weights2 = genome[p1..(genome.size-1)].in_groups_of(nodes[:inner]) #get weights for the second layer
+    @network = NeuralNetwork.new([NeuralLayer.new(weights1), NeuralLayer.new(weights2)]) #initialize NeuralNetwork with 2 NeuralLayers
   end
 end
 
@@ -90,12 +82,12 @@ class Brains::RiverTam < Brain
   def initialize nodes, genome
     @nodes, @genome = nodes, genome
     self.sane?
-    p1 = (nodes[:in] * nodes[:inner])
-    p2 = p1 + (nodes[:inner] * nodes[:inner2]) 
-    weights1 = genome[0..p1-1].in_groups_of(nodes[:in])
-    weights2 = genome[p1..p2-1].in_groups_of(nodes[:inner])
-    weights3 = genome[p2..(genome.size-1)].in_groups_of(nodes[:inner2]) 
-    @network = NeuralNetwork.new([NeuralLayer.new(weights1), NeuralLayer.new(weights2), NeuralLayer.new(weights3)])
+    p1 = (nodes[:in] * nodes[:inner]) #number of genes(weights) needed for first layer
+    p2 = p1 + (nodes[:inner] * nodes[:inner2]) #number of genes(weights) needed for second layer
+    weights1 = genome[0..p1-1].in_groups_of(nodes[:in]) #get weights for the first layer
+    weights2 = genome[p1..p2-1].in_groups_of(nodes[:inner]) #get weights for the second layer
+    weights3 = genome[p2..(genome.size-1)].in_groups_of(nodes[:inner2]) #get weights for the third layer
+    @network = NeuralNetwork.new([NeuralLayer.new(weights1), NeuralLayer.new(weights2), NeuralLayer.new(weights3)]) #initialize NeuralNetwork with 3 NeuralLayers
   end
 end
 
@@ -113,8 +105,8 @@ class NeuralNetwork
   end
 end
 
-#A NeuralLayer is a single layer of a neural network, or on its own just a single layer network (or SLP single layer perceptron)
-#It is initialized with an Array of weights (Array of Arrays, size of outer array defines number of output nodes, inner array size defines input nodes.
+#A NeuralLayer is a single layer of a neural network, or on its own just a single layer network (SLP - single layer perceptron)
+#It is initialized with an Array of weights; an Array of Arrays, size of outer array defines number of output nodes, inner array size defines input nodes.
 #ie: [[0,0,0],[0,1,0]] might be the weights for a layer with 3 inputs and 2 outputs.
 class NeuralLayer
   def initialize weights 
@@ -156,5 +148,3 @@ class Array
     return col
   end
 end
-
-
