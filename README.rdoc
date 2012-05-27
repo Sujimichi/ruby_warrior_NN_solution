@@ -18,7 +18,7 @@ The first epic solution I evolved was a trigger happy nut which made it to the t
 ===Running the solution
 To run the solution copy the files 'brains.rb' and 'genome' along with my player.rb into the warrior directory.
 
-The genome in the genome file (same as genome_normal) was evolved to solve rubywarrior in normal mode and will get as far as level 7 (and has some nice behaviours).
+The genome in the genome file was evolved to solve rubywarrior in normal mode and will get as far as level 7 (and has some nice behaviours).
 Once at level 8 copy the genome_epic file into the folder and rename it to genome.  This genome was evolved in epic mode and will complete normal mode levels 8(badly) and 9(Sgrade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
 
 
@@ -51,9 +51,10 @@ For example;
      -----------
 
 The input array also has values for armed, health and taking_fire.
- * armed gives the neural net a sense of whether it can shoot.  1 for can shoot, otherwise 0.
- * health is the current health, scaled between 0 and 1 with 0 for full, 1 for dead.  if the warrior does not respond to health it returns 0.
- * taking_fire returns 1 if the previous health is less than current.
+
+* armed gives the neural net a sense of whether it can shoot.  1 for can shoot, otherwise 0.
+* health is the current health, scaled between 0 and 1 with 0 for full, 1 for dead.  if the warrior does not respond to health it returns 0.
+* taking_fire returns 1 if the previous health is less than current.
 
 There is one final input which is a constant 1 in all cases (representational bias)
 The full set of 16 inputs might be something like;
@@ -72,6 +73,22 @@ The other 6 nodes each represent an action; :walk, :attack, :rest, :rescue, :piv
 The evolution of the neural network will have to work out which node results in what outcome and 'realise' which actions it can use as all nodes are present throughout all the levels.  It's therefore possible for the brain to request actions which are not yet available, it will have to evolve not to as this would result in no activity.
 
 The resultant output is an array of an action and an impulse ie; [:walk, :forward] or [:attack, :backward].
+
+====The NeuralNetwork
+The neural network used (after trying several configs) was a 2 layer network with 6 inner nodes.
+
+    [w<]  [w/\]  [w>]  [w\/]  [we]  [e/\]  [e>]  [e\/]  [c<]  [c/\]  [c>]  [c\/]  [Armed?]  [cur_health]  [health_reducing?]  [1]
+
+
+
+                                              [?]  [?]  [?]  [?]  [?]  [?]
+
+
+
+                          [fwd/bkwd]  [<-/->]  [walk]  [attack]  [rest]  [rescue]  [pivot]  [shoot]
+
+
+The resultant network would look something like this, with each 'node' connected to each 'node' in the subsequent layer.  The connections (which I could not draw in text!) are weighted according to the genome used.  The value on an inner node is the value given to each input node multipled by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
 
 
 ====Instructing the Warrior
