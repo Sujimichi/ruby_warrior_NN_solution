@@ -4,7 +4,10 @@ This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Ne
 
 I used Darwin's LAW* of selection to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  Evolving the solution took many thousands of generations and I did a number of things to speed this up, see 'Evolving the Solution' for more details.  I have not attempted to use this approach on the intermediate tower, one day....
 
+Thanks to Ryan for writing RubyWarrior, it was great fun writing this solution.
+
 ==The Solution
+
 The solution's code does not contain any human designed responses.  The human design is in parsing the rubywarrior world on each turn and presenting that to the network and in interpreting the network's output into a command which can be passed to the warrior.  The decision of what to do on each turn is entirely up to the neural network.  I have no idea what the NN's are thinking!
 
 I wanted to produce a genome which could do well in epic mode and also be able to work up the levels in normal mode from the start.  So far I have one genome which can run epic mode and one which can steadily climb up the tower from the start in normal mode up to level 7.  Levels 8 and 9 in normal mode where evolved separately and I've not been able to cross breed them with the 1-7genomes yet.
@@ -136,7 +139,7 @@ Like CombatTraining this uses Invigilator to score the performance of an NN in r
 
 
 == * Darwins Law
-I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It is.  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce novel behaviours via recombination and mutation'.  Part of the reason for writing this was to do a simple and clear demonstration for an on going argument with some creationist types.  RubyWarrior provides a great platform as it something more interesting/real than a lot of the more mathematical proofs.
+I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce novel, complex and undesigned behaviours via recombination and mutation'.  Part of the reason for writing this was to do a simple and clear demonstration for an on going argument with some creationist types.  RubyWarrior provides a great platform as it something more interesting/real than a lot of the more mathematical proofs.
 
 
 
