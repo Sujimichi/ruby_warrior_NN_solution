@@ -1,6 +1,5 @@
 #Micro Genetic Algorithm - slight variation on https://github.com/Sujimichi/micro_ga
 class MGA
-  require 'digest'
 
   attr_accessor :population, :generations, :mutation_rate, :cross_over_rate, :current_generation, :popsize, :scores
   def initialize args = {}
@@ -34,6 +33,7 @@ class MGA
   def fitness genome
     return @fitness_function.call(genome, @current_generation) unless @cache_fitness  #return fitness as norm if caching is off
     @scores[genome] = @fitness_function.call(genome, @current_generation) unless @scores[genome] #update cache if value not present
+    puts "cached fitness #{@scores[genome]}"
     @scores[genome] #return cached value
   end
   

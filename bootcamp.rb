@@ -245,8 +245,6 @@ class AgentTraining < BasicTraining
     @target_score = 842
     set_config_for n_layers
     reset_high_score
-    @fitness_cache = {}
-
     @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :cache_fitness => true, :fitness => Proc.new{|genome, gen|
       puts "#{gen}\n"
       genome_file = "./genome"
@@ -254,17 +252,18 @@ class AgentTraining < BasicTraining
       score_sum = 0
       threads = []
       levels = [1,2,3,4,5,6,7,8,9]
-      levels.each do |i|
+
+      levels.each do |lvl|
         threads << Thread.new{
-          results = `rubywarrior -t 0 -s -l #{i}`
+          results = `rubywarrior -t 0 -s -l #{lvl}`
           invigilator = Invigilator.new
           score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results results
-          puts "Level#{i} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
-          instance_variable_set("@ans#{i}", score)
+          puts "Level#{lvl} | levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
+          instance_variable_set("@ans#{lvl}", score)
         }
       end
       threads.each{|t| t.join}
-      score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
+      score_sum = levels.map{|lvl| instance_variable_get("@ans#{lvl}")}.compact.sum
 
       puts "\n\t==Summed Score #{score_sum}"
       remark_on score_sum
@@ -294,7 +293,7 @@ class FieldTraining < BasicTraining
       puts "#{gen}\n"
       Dir.chdir(rootdir)
 
-      level_factor = [0.8, 1.0, 0.8, 0.6, 0.4, 0.9, 1.0, 1.0, 1.0]
+      level_weight = [0.8, 1.0, 0.8, 0.6, 0.4, 0.9, 1.0, 1.0, 1.0]
 
       puts "\n\n"
     
@@ -310,7 +309,7 @@ class FieldTraining < BasicTraining
           #use invigilator to get the final score.  Also returns the break down of points for displaying.
           score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results(results)   
 
-          score = score * level_factor[lvl-1]
+          score = score * level_weight[lvl-1]
 
 
           puts "level-#{lvl}|levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
