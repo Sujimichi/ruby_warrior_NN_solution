@@ -36,7 +36,7 @@ Player#initialize loads the 'genome' file and uses this to initialize it's Brain
 * Finaly the action and impulse are passed to the warrior.
 
 ====Inputs
-The input array has a mapping of warror.feel and warror.look (when available) in all directions as an Array of values. The first four values are for 'walls' in each direction, left, forward, right, backward respectivly.  The value is 1 if the warrior can feel a wall in the given direction.  The next four values represent 'enemies' of all kinds (with the same order for directions) and the next for are for 'captives'.
+The input array has a mapping of warror.feel and warror.look (when available) in all directions as an Array of values. The first four values are for 'walls' in each direction, left, forward, right, backward respectivly.  The value is 1 if the warrior can feel a wall in the given direction.  The next four values represent 'enemies' of all kinds (with the same order for directions) and the next four are for 'captives'.
 
 If the warrior can just :feel the first 12 values might be;
      -----------
