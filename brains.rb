@@ -58,8 +58,7 @@ class Brains::Neanderthal < Brain
   def initialize nodes, genome
     @nodes, @genome = nodes, genome
     self.sane? #check genome size is ok
-    weights = genome.in_groups_of(nodes[:in]) #split the genome into as many groups as there are inputs 
-    @network = NeuralNetwork.new([NeuralLayer.new(weights)]) #initialize NeuralNetwork with 1 NeuralLayer 
+    @network = NeuralNetwork.new([NeuralLayer.new(genome.in_groups_of(nodes[:in]))]) #initialize NeuralNetwork with 1 NeuralLayer 
   end
 end
 
@@ -70,9 +69,10 @@ class Brains::R2D2 < Brain
     @nodes, @genome = nodes, genome
     self.sane? #check genome size is ok
     p1 = (nodes[:in] * nodes[:inner]) #number of genes(weights) needed for first layer
-    weights1 = genome[0..p1-1].in_groups_of(nodes[:in]) #get weights for the first layer
-    weights2 = genome[p1..(genome.size-1)].in_groups_of(nodes[:inner]) #get weights for the second layer
-    @network = NeuralNetwork.new([NeuralLayer.new(weights1), NeuralLayer.new(weights2)]) #initialize NeuralNetwork with 2 NeuralLayers
+    @network = NeuralNetwork.new([
+      NeuralLayer.new(genome[0..p1-1].in_groups_of(nodes[:in])), #init 1st layer with weights from genome
+      NeuralLayer.new(genome[p1..(genome.size-1)].in_groups_of(nodes[:inner])) #init 2nd layer with weights from genome
+    ])
   end
 end
 
@@ -84,10 +84,11 @@ class Brains::RiverTam < Brain
     self.sane?
     p1 = (nodes[:in] * nodes[:inner]) #number of genes(weights) needed for first layer
     p2 = p1 + (nodes[:inner] * nodes[:inner2]) #number of genes(weights) needed for second layer
-    weights1 = genome[0..p1-1].in_groups_of(nodes[:in]) #get weights for the first layer
-    weights2 = genome[p1..p2-1].in_groups_of(nodes[:inner]) #get weights for the second layer
-    weights3 = genome[p2..(genome.size-1)].in_groups_of(nodes[:inner2]) #get weights for the third layer
-    @network = NeuralNetwork.new([NeuralLayer.new(weights1), NeuralLayer.new(weights2), NeuralLayer.new(weights3)]) #initialize NeuralNetwork with 3 NeuralLayers
+    @network = NeuralNetwork.new([
+      NeuralLayer.new(genome[0..p1-1].in_groups_of(nodes[:in])), #init 1st layer with weights from genome
+      NeuralLayer.new(genome[p1..p2-1].in_groups_of(nodes[:inner])), #init 2nd layer with weights from genome
+      NeuralLayer.new(genome[p2..(genome.size-1)].in_groups_of(nodes[:inner2]))  #init 3rd layer with weights from genome
+    ])    
   end
 end
 
