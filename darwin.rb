@@ -1,6 +1,8 @@
 #Micro Genetic Algorithm - slight variation on https://github.com/Sujimichi/micro_ga
 class MGA
-  attr_accessor :population, :generations, :mutation_rate, :cross_over_rate, :current_generation, :popsize
+  require 'digest'
+
+  attr_accessor :population, :generations, :mutation_rate, :cross_over_rate, :current_generation, :popsize, :scores
   def initialize args = {}
     @popsize = args[:popsize] || 30                   #Number of members (genomes) in the population
     @gene_length = args[:gene_length] || 10           #Number of bit (genes) in a genome
@@ -11,6 +13,7 @@ class MGA
     @fitness_function = args[:fitness] || Proc.new{|genome| genome.inject{|i,j| i+j} }  #init fitness function or use simple max ones
     @current_generation = 0
     @scores = {}
+    @cache_fitness = args[:cache_fitness] || false
   end
 
   def evolve generations = @generations
@@ -29,14 +32,44 @@ class MGA
     n + (rand - 0.5) #plus or minus small value. ||  (n-1).abs #for binary mutation; 1 -> 0, 0 -> 1        
   end
   def fitness genome
-    @fitness_function.call(genome, @current_generation)
+    return @fitness_function.call(genome, @current_generation) unless @cache_fitness  #return fitness as norm if caching is off
+    @scores[genome] = @fitness_function.call(genome, @current_generation) unless @scores[genome] #update cache if value not present
+    @scores[genome] #return cached value
   end
+  
   def ordered_population
     population.sort_by{|member| fitness(member)}.reverse
   end
+
   def best
     ordered_population.first
   end
-
 end
 
+=begin
+def cache_test
+
+  f =  Proc.new{|genome| print'.';sleep(0.05); genome.inject{|i,j| i+j} } 
+  pop = Array.new(30){ Array.new(10){ 0 } }   
+  g1 = MGA.new(:cache => false, :generations => 5000, :fitness => f)
+  g2 = MGA.new(:cache => true, :generations => 5000, :fitness => f)
+  g1.population = pop
+  g2.population = pop
+
+  ave1 = g1.population.map{|g| g1.fitness g}.inject{|i,j| i+j} / g1.population.size
+  ave2 = g2.population.map{|g| g1.fitness g}.inject{|i,j| i+j} / g2.population.size
+  puts [ave1, ave2].inspect
+
+  t1_1 = Time.now;g1.evolve; t1_2 = Time.now;
+  t2_1 = Time.now;g2.evolve; t2_2 = Time.now;
+  t1 = t1_2 - t1_1 
+  t2 = t2_2 - t2_1
+
+  ave1 = g1.population.map{|g| g1.fitness g}.inject{|i,j| i+j} / g1.population.size
+  ave2 = g2.population.map{|g| g1.fitness g}.inject{|i,j| i+j} / g2.population.size
+  puts [ave1, ave2].inspect
+  puts [t1, t2].inspect
+
+
+end
+=end

@@ -245,13 +245,12 @@ class AgentTraining < BasicTraining
     @target_score = 842
     set_config_for n_layers
     reset_high_score
+    @fitness_cache = {}
 
-    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :cache_fitness => true, :fitness => Proc.new{|genome, gen|
       puts "#{gen}\n"
-
       genome_file = "./genome"
-      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}
-      
+      File.open(genome_file,'w'){|f| f.write( genome.join(",") )}      
       score_sum = 0
       threads = []
       levels = [1,2,3,4,5,6,7,8,9]
@@ -266,6 +265,7 @@ class AgentTraining < BasicTraining
       end
       threads.each{|t| t.join}
       score_sum = levels.map{|i| instance_variable_get("@ans#{i}")}.compact.sum
+
       puts "\n\t==Summed Score #{score_sum}"
       remark_on score_sum
       puts "."
@@ -290,7 +290,7 @@ class FieldTraining < BasicTraining
 
     rootdir = "/home/sujimichi/coding/lab/rubywarrior"
 
-    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
+    @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :cache_fitness => true, :fitness => Proc.new{|genome, gen|
       puts "#{gen}\n"
       Dir.chdir(rootdir)
 
@@ -299,7 +299,7 @@ class FieldTraining < BasicTraining
       puts "\n\n"
     
       threads = []
-      levels.sort_by{rand}.each do |lvl|
+      levels.each do |lvl|
         Dir.chdir("#{rootdir}/level#{lvl}bot-beginner")
         File.open("./genome", 'w'){|f| f.write( genome.join(",") )} #write the genome to file which Player will use
         
