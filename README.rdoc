@@ -18,14 +18,13 @@ The first epic solution I evolved was a trigger happy nut which made it to the t
 ===Running the solution
 To run the solution copy the files 'brains.rb' and 'genome' along with my player.rb into the warrior directory.
 
-This genome (same as genome_normal) was evolved to solve rubywarrior in normal mode and will get as far as level 7 (and has some nice behaviours).
-Once at level 8 copy the genome_epic file into the folder and rename it to genome.  This genome was evolved in epic mode and will complete normal mode levels 8 and 9 and then all of the levels on epic.  It the current best, I hope to get it a bit better.
+The genome in the genome file (same as genome_normal) was evolved to solve rubywarrior in normal mode and will get as far as level 7 (and has some nice behaviours).
+Once at level 8 copy the genome_epic file into the folder and rename it to genome.  This genome was evolved in epic mode and will complete normal mode levels 8(badly) and 9(Sgrade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
 
 
 The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.  To get everything in one go run this inside the folder for a rubywarrior;
 
     git clone /home/sujimichi/coding/lab/ruby_warrior_NN_solution && sh ruby_warrior_NN_solution/init.sh
-
 
 
 
@@ -128,35 +127,3 @@ After evolving a solution to each level and unlocking epic mode then next traini
 
 ====AgentTraining
 Like CombatTraining this uses Invigilator to score the performance of an NN in rubywarrior levels.  However it is run in epic mode so all abilities are available in all levels and it tests the NN's performance of each level.  In one fitness evaluation the NN is tested on each level so to speed things up each level is run in a separate Thread and the score collected after all threads complete.
-
-
-
-
-
-
-
-
-
-
-== * Darwins Law
-I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce novel, complex and undesigned behaviours via recombination and mutation'.  Part of the reason for writing this was to do a simple and clear demonstration for an on going argument with some creationist types.  RubyWarrior provides a great platform as it something more interesting/real than a lot of the more mathematical proofs.
-
-
-
-
-
-
---notes
-After trying many different NN configurations I settled on a 2 layer network with 16 input nodes, 6 nodes in the inner layer and 8 outputs.  This was a good balence between complexity while still keeping the genome relatively short (144 genes).
-To speed things up I had an initial step which evolved the networks over some simulated situations.  This pre-conditioning phase can be run much faster as it does not use rubywarrior and is used to take the population through the first few thousand generations and introduce some of the needed genes.  The pre-conditioning results in NN's which are able to solve the first 2-3 levels without further evolution.  See more about this later.
-
-There are three possible brain classes; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam for 1, 2 and 3 layer neural networks.  R2D2 is the brain used in the solution, River was,... problematic.
-
-
-RubyWarrior is a really good learning tool.  I hope this solution which has very simple implementations of neural networks and genetic algorithms can also be of use to others as a learning toy.
-
-
-
-
-
-foo
