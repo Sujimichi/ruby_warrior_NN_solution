@@ -1,26 +1,27 @@
 = Evolved Neural Network solution to RubyWarrior
 
-This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artifical Intelligence which had figured out the correct responses to situations on its own.
+This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artificial Intelligence which had figured out the correct responses to situations on its own.
 
-I used Darwin's LAW* of selection to cross breed the genomes of a population of Nerual Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the begininer tower in epic mode.  Evolving the solution took many thousands of generations and I did a number of things to speed this up, see 'Evolving the Solution' for more details.
+I used Darwin's LAW* of selection to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  Evolving the solution took many thousands of generations and I did a number of things to speed this up, see 'Evolving the Solution' for more details.  I have not attempted to use this approach on the intermediate tower, one day....
 
 ==The Solution
-The solution's code does not contain any human designed responses.  The human design is in parsing the rubywarrior world on each turn and presenting that to the network and in interpreting the networks output into a command which can be passed to the warrior.  The desision of what to do on each turn is entirely up to the neural network.  I have no idea what the NN's are thinking!
+The solution's code does not contain any human designed responses.  The human design is in parsing the rubywarrior world on each turn and presenting that to the network and in interpreting the network's output into a command which can be passed to the warrior.  The decision of what to do on each turn is entirely up to the neural network.  I have no idea what the NN's are thinking!
 
-I wanted to produce a genome which could do well in epic mode and also be able to work up the levels in normal mode from the start.  So far I have one genome which can run epic mode and one which can steadily climb up the tower from the start in normal mode up to level 7.  Levels 8 and 9 in normal mode where evolved separatly and I've not been able to cross breed them with the 1-7genomes yet.
+I wanted to produce a genome which could do well in epic mode and also be able to work up the levels in normal mode from the start.  So far I have one genome which can run epic mode and one which can steadily climb up the tower from the start in normal mode up to level 7.  Levels 8 and 9 in normal mode where evolved separately and I've not been able to cross breed them with the 1-7genomes yet.
 
-The first epic solution I evolved was a trigger happy nut which made it to the top but shot all the captives.  By cross breeding it with a more captive friendly genome from level 5 I got one which does rescue captives, but only if it is also injured.  Further evolution has improved on this but some captives still get shot!  This genome gets a grade A score on epic but it could do better so I'm continuing to evolve it.
+The first epic solution I evolved was a trigger happy nut which made it to the top but shot all the captives.  By cross breeding it with a more captive friendly genome from level 5 I got one which does rescue captives, but only if it is also injured!  Further evolution has improved on this but some captives still get shot.  This genome gets a grade A score on epic but it could do better so I'm continuing to evolve it.
 
 
 ===Running the solution
-To run the solution the file brains.rb needs to be included along with my player.rb.  In addition there also needs to be a file called 'genome' which contains the genetic code to be used.  Then run rubywarrior as normal.
+To run the solution copy the files 'brains.rb' and 'genome' along with my player.rb into the warrior directory.
 
-To get the files needed just run this inside the folder for a rubywarrior;
+This genome (same as genome_normal) was evolved to solve rubywarrior in normal mode and will get as far as level 7 (and has some nice behaviours).
+Once at level 8 copy the genome_epic file into the folder and rename it to genome.  This genome was evolved in epic mode and will complete normal mode levels 8 and 9 and then all of the levels on epic.  It the current best, I hope to get it a bit better.
+
+
+The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.  To get everything in one go run this inside the folder for a rubywarrior;
 
     git clone /home/sujimichi/coding/lab/ruby_warrior_NN_solution && sh ruby_warrior_NN_solution/init.sh
-
-That will also bring in 'darwin.rb' and 'bootcamp.rb' which are used for evolving the NN's behaviours.  The genome file will contain the genome for the epic solution.
-
 
 
 
@@ -72,24 +73,24 @@ The resultant output is an array of an action and an impulse ie; [:walk, :forwar
 
 
 ====Instructing the Warrior
-The action and impulse from the brain are passed to the warrior inside a rescue block to handle the event of the brain requesting actions which are not yet available.  If the brain does request an unavailable ation it rescues the NoMethodError, `puts` an error message and the warrior does nothing for that turn.
+The action and impulse from the brain are passed to the warrior inside a rescue block to handle the event of the brain requesting actions which are not yet available.  If the brain does request an unavailable action it rescues the NoMethodError, `puts` an error message and the warrior does nothing for that turn.
 
 
 
 ==Evolving the Solution
 
-Evolving the NN's was not staightforward, my aim was to run evolution in each level until it managed to solve it and then progress.  When I reached the top I hoped that I could put the winning genomes from each level into one population and use that to evolve the epic solution.  I was not expecting the epic solution to allow all abilities in all levels but by crossing winners from the later levels I was able to evolve the epic solution.
+Evolving the NN's was not straightforward, my aim was to run evolution in each level until it managed to solve it and then progress.  When I reached the top I hoped that I could put the winning genomes from each level into one population and use that to evolve the epic solution.  I was not expecting the epic solution to allow all abilities in all levels but by crossing winners from the later levels I was able to evolve the epic solution.
 
-Rubywarrior presents a difficult environment for evolution as many positive changes need to have happened before any points as awarded at all and final scores are only shown after completing a level.  The other problem is the genetic search space is big and pretty uneven resulting in much slower evolution.
+RubyWarrior presents a difficult environment for evolution as many positive changes need to have happened before any points as awarded at all and final scores are only shown after completing a level.  The other problem is the genetic search space is big and pretty uneven resulting in much slower evolution.
 
 To speed things up I created several classes which are used to run different evolution processes (and lost the plot somewhat with the names).  There are several 'training grounds' which all inherit from the class BasicTraining the first of these is BootCamp.
 
-I tried the solution with 1, 2 and 3 layered nerual nets, so there is a class for each; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam all of which inherit from the Brain class.  In the end the brain used was R2D2 with the 2 layer NN.
+I tried the solution with 1, 2 and 3 layered neural nets, so there is a class for each; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam all of which inherit from the Brain class.  In the end the brain used was R2D2 with the 2 layer NN.
 
 ====BootCamp
 The idea of BootCamp is to pre-condition the NN's to a set of predefined inputs with expected responses.  It does not use rubywarrior and can run quickly to race the population through several thousand generations of simple simulated experience.  The NN's are shown sets of inputs and scored for a correct answer, for example when given inputs that show an enemy in front they are given a point for returning [:attack, :forward].  The predefined inputs/responses sets of constants in AssaultCourse, ie AssaultCourse::BasicManuvers.  An instance of the class DrillSergeant is used to score each NN over the AssaultCourse.
 
-This evolution starts with a completly random population and over several thousand generations will have introduced some of the required genes.  Yes this does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NN start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
+This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.  Yes this does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NN start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
 
 To start a fresh BootCamp evolution in a rubywarrior folder:
 
@@ -123,7 +124,7 @@ After evolving a solution to each level and unlocking epic mode then next traini
     agent_training = combat_training.graduate
 
 ====AgentTraining
-Like CombatTraining this uses Invigilator to score the preformance of an NN in rubywarrior levels.  However it is run in epic mode so all abilities are available in all levels and it tests the NN's performance of each level.  In one fitness evaluation the NN is tested on each level so to speed things up each level is run in a separate Thread and the score collected after all threads complete.
+Like CombatTraining this uses Invigilator to score the performance of an NN in rubywarrior levels.  However it is run in epic mode so all abilities are available in all levels and it tests the NN's performance of each level.  In one fitness evaluation the NN is tested on each level so to speed things up each level is run in a separate Thread and the score collected after all threads complete.
 
 
 
@@ -135,7 +136,7 @@ Like CombatTraining this uses Invigilator to score the preformance of an NN in r
 
 
 == * Darwins Law
-I refered to the so called 'theory of evolution' as Darwin's LAW of selection.  It is.  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce novel behaviors via recombination and muation'.  Part of the reason for writing this was to do a simple and clear demonstraightion for an on going argument with some creationist types.  RubyWarrior provides a great platform as it something more interesting/real than a lot of the more mathematical proofs.
+I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It is.  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce novel behaviours via recombination and mutation'.  Part of the reason for writing this was to do a simple and clear demonstration for an on going argument with some creationist types.  RubyWarrior provides a great platform as it something more interesting/real than a lot of the more mathematical proofs.
 
 
 
@@ -143,7 +144,7 @@ I refered to the so called 'theory of evolution' as Darwin's LAW of selection.  
 
 
 --notes
-After trying many different NN configurations I settled on a 2 layer network with 16 input nodes, 6 nodes in the inner layer and 8 outputs.  This was a good balence between complexity while still keeping the genome relativly short (144 genes).
+After trying many different NN configurations I settled on a 2 layer network with 16 input nodes, 6 nodes in the inner layer and 8 outputs.  This was a good balence between complexity while still keeping the genome relatively short (144 genes).
 To speed things up I had an initial step which evolved the networks over some simulated situations.  This pre-conditioning phase can be run much faster as it does not use rubywarrior and is used to take the population through the first few thousand generations and introduce some of the needed genes.  The pre-conditioning results in NN's which are able to solve the first 2-3 levels without further evolution.  See more about this later.
 
 There are three possible brain classes; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam for 1, 2 and 3 layer neural networks.  R2D2 is the brain used in the solution, River was,... problematic.
