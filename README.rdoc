@@ -13,7 +13,7 @@ The solution uses a 'genome' file to define the 'weights' of a neural network wh
 ===Running the solution
 To run the solution copy the files 'brains.rb' and 'genome' along with my player.rb into the warrior directory.
 
-The genome in that file will solve rubywarrior in normal mode but can't pass level 8 although it has some nice behaviours.  Once at level 8 use the genome in the file 'genome_epic' (renaming it to 'genome'). That genome will complete normal mode levels 8(badly) and 9(Sgrade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
+The genome in that file will solve rubywarrior in normal mode but can't pass level 8 although it has some nice behaviours.  Once at level 8 use the genome in the file 'genome_epic' (renaming it to 'genome'). That genome will complete normal mode levels 8(badly) and 9(S grade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
 
 
 The code in brains.rb has extra code for using NN's with different numbers of layers.  There is a cut down version without all the extra code/comments, just the bare essentials to run the solution (in 100 lines :) ) and the two genomes (https://gist.github.com/2795962).  The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.
@@ -27,10 +27,10 @@ Player#play_turn
 
 * On each call it first 'senses' the world as an 'input array'.
 * The input array is passed to the :act_on method of the brain which calls the neural network to calculate its response to the inputs.  The networks response is interpreted and returned as an 'action' and an 'impulse', ie: [:walk, :forward], or [:attack, :backward]
-* Finaly the action and impulse are passed to the warrior.
+* Finally the action and impulse are passed to the warrior.
 
 ====Inputs
-The input array has a mapping of warror.feel and warror.look (when available) in all directions as an Array of values. The first four values are for 'walls' in each direction, left, forward, right, backward respectivly.  The value is 1 if the warrior can feel a wall in the given direction, otherwise 0.  The next four values represent 'enemies' of all kinds and the next four are for 'captives' (all have the same order for directions).
+The input array has a mapping of warror.feel and warror.look (when available) in all directions as an Array of values. The first four values are for 'walls' in each direction, left, forward, right, backward respectively.  The value is 1 if the warrior can feel a wall in the given direction, otherwise 0.  The next four values represent 'enemies' of all kinds and the next four are for 'captives' (all have the same order for directions).
 
 For example, if the warrior can just :feel the first 12 values might be;
      -----------
@@ -64,14 +64,14 @@ The Brain class has a method :act_on which takes the input array and passes it t
 
 The first 2 nodes select an 'impulse' while the other 6 select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the absolute value for the first node is greater than the absolute value for the second, it takes the forward/backward impulse, otherwise it takes the left/right impulse.
 
-The other 6 nodes each represent an action; :walk, :attack, :rest, :rescue, :pivot, :shoot respectivly (the order was not important).  Which ever of these nodes has the strongest stimulation (highest value) will be the action taken.
+The other 6 nodes each represent an action; :walk, :attack, :rest, :rescue, :pivot, :shoot respectively (the order was not important).  Which ever of these nodes has the strongest stimulation (highest value) will be the action taken.
 
 I defined which node is connected to which action, the evolution of the neural network will have to work out which node results in what outcome.  It will also have to 'realise' which actions it can use as all nodes are present throughout all the levels.  It's therefore possible for the brain to request actions which are not yet available, it will have to evolve not to as this results in no activity.
 
 The resultant output is an array of an action and an impulse ie; [:walk, :forward] or [:attack, :backward].
 
 ====The NeuralNetwork
-I tried the solution with 1, 2 and 3 layered neural nets with different numbers of nodes. A 1 layer can perform and AND or an OR function, a 2 layer can perform XOR and a 3 can aproximate any mathematical function.  brains.rb has a separate class for a 1, 2 and 3 layer NN; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam all of which inherit from the Brain class.  Brains::Neanderthal was too dumb and River was..., problematic.  In the end the brain used was R2D2, the 2 layer NN; set to have 6 inner nodes (16 in, 8 out).  It might look something like this;
+I tried the solution with 1, 2 and 3 layered neural nets with different numbers of nodes. A 1 layer can perform and AND or an OR function, a 2 layer can perform XOR and a 3 can approximate any mathematical function.  brains.rb has a separate class for a 1, 2 and 3 layer NN; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam all of which inherit from the Brain class.  Brains::Neanderthal was too dumb and River was..., problematic.  In the end the brain used was R2D2, the 2 layer NN; set to have 6 inner nodes (16 in, 8 out).  It might look something like this;
 
     [w<] [w/\] [w>] [w\/] [<e] [e/\] [e>] [e\/] [c<] [c/\] [c>] [c\/] [Armed?] [cur_health] [health_reducing?] [1]
 
@@ -82,7 +82,7 @@ I tried the solution with 1, 2 and 3 layered neural nets with different numbers 
                        [fwd/bkwd]  [<-/->]  [walk]  [attack]  [rest]  [rescue]  [pivot]  [shoot]
 
 
-Each 'node' is connected to each 'node' in the subsequent layer resulting in 144 connections.  The connections (which I could not draw in text!) are weighted according to the (144gene) genome used.  The value on an inner node is the value given to each input node multipled by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
+Each 'node' is connected to each 'node' in the subsequent layer resulting in 144 connections.  The connections (which I could not draw in text!) are weighted according to the (144gene) genome used.  The value on an inner node is the value given to each input node multiplied by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
 
 
 
@@ -164,4 +164,4 @@ Like CombatTraining this uses Invigilator to score the performance of an NN in r
 Like AgentTraining this tests the NN in all levels but in normal mode.  Sadly rubywarrior does not have option to run without all abilities when in epic so for this to work a separate rubywarrior folder needs to be created for each level and set at the correct level.
 
 == * Darwins Law
-I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.
+I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now countless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.
