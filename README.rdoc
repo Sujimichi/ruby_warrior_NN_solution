@@ -102,7 +102,7 @@ To speed things up I created several classes which are used to run different evo
 To run evolution of the NN's you need 'darwin.rb' and 'bootcamp.rb' along with the player and its 'brains.rb' inside a rubywarrior folder.
 To get everything set in one go run this inside the folder for a rubywarrior;
 
-    git clone /home/sujimichi/coding/lab/ruby_warrior_NN_solution && sh ruby_warrior_NN_solution/init.sh
+    git clone git@github.com:Sujimichi/ruby_warrior_NN_solution.git && sh ruby_warrior_NN_solution/init.sh
 
 
 In 'bootcamp.rb' there are several 'training grounds' which all inherit from the class BasicTraining and evolve populations of NN's in different environments.  All training grounds work in the same way to run populations of NN's through evolution in different environments.  Each training ground initializes a genetic algorithm and sets up a fitness function specific to that training ground.  It can then be used to run the GA, save/load the population and some other common actions.
