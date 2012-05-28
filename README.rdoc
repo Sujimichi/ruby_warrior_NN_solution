@@ -127,7 +127,8 @@ The last two run all levels for each NN to be tested, so each level is run in a 
 ====BootCamp
 BootCamp runs very fast (without rubywarrior) and simulates inputs and awards points for correct output.  For example, when given inputs that show an enemy in front the NN is given a point for returning [:attack, :forward].  The predefined inputs/responses are a set of constants in AssaultCourse, ie AssaultCourse::BasicManuvers.  An instance of the class DrillSergeant is used to score each NN over the AssaultCourse.
 
-This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.  This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NNs start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
+This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.
+This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It is possible to not use BootCamp but it will take much longer.  Once the NNs start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.  The other key use of BootCamp was to test the potential of NN's quickly; for example I was able to rule out using a single layered NN as it could not make all the distictions to pass BootCamp.
 
 To start a fresh BootCamp evolution in a rubywarrior folder:
 
@@ -174,4 +175,4 @@ FieldTraining was added after I found that epic mode allows all abilities in all
 
 
 === * Darwins Law
-I referred to 'the theory of evolution' as Darwin's LAW of selection.  It so is!  The process of selection which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.  Weather WE are here because of it is another matter, but does not change the fact that Darwin's process is mathematically sound.
+I referred to 'the theory of evolution' as Darwin's LAW of selection.  It so is!  The process of selection which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.  Whether WE are here because of it is another matter, but does not change the fact that Darwin's process is mathematically sound.
