@@ -293,7 +293,12 @@ class FieldTraining < BasicTraining
       puts "#{gen}\n"
       Dir.chdir(rootdir)
 
-      level_weight = [0.8, 1.0, 0.8, 0.6, 0.4, 0.9, 1.0, 1.0, 1.0]
+      #weight level scores to account for some levels having more potential points than others.  Try to prevent breeding with preference for levels
+      #level_weight = [0.8, 1.0, 0.8, 0.6, 0.4, 0.9, 1.0, 1.0, 1.0] #stab in dark values      
+      #ace_scores = [15, 26, 71, 90, 123, 105, 50, 46, 100]#level ace scores.
+      #level_weight = ace_scores.map{|i| (15/i.to_f).round(1)} #=> [1.0, 0.6, 0.2, 0.2, 0.1, 0.1, 0.3, 0.3, 0.2] 
+      level_weight = [1.0, 0.5, 0.2, 0.1, 0.1, 0.1, 0.4, 0.4, 0.3]
+
 
       puts "\n\n"
     

@@ -1,7 +1,7 @@
 #Micro Genetic Algorithm - slight variation on https://github.com/Sujimichi/micro_ga
 class MGA
 
-  attr_accessor :population, :generations, :mutation_rate, :cross_over_rate, :current_generation, :popsize, :scores
+  attr_accessor :population, :generations, :mutation_rate, :cross_over_rate, :current_generation, :popsize, :scores, :cache_fitness
   def initialize args = {}
     @popsize = args[:popsize] || 30                   #Number of members (genomes) in the population
     @gene_length = args[:gene_length] || 10           #Number of bit (genes) in a genome
