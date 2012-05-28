@@ -16,14 +16,16 @@ To run the solution copy the files 'brains.rb' and 'genome' along with my player
 The genome in that file will solve rubywarrior in normal mode but can't pass level 8 although it has some nice behaviours.  Once at level 8 use the genome in the file 'genome_epic' (renaming it to 'genome'). That genome will complete normal mode levels 8(badly) and 9(Sgrade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
 
 
-The code in brains.rb has extra code for using NN's with different numbers of layers.  There is a cut down version without all the extra code/comments, just the bare essentials to run the solution (==100lines) and the two genomes (https://gist.github.com/2795962).  The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.
+The code in brains.rb has extra code for using NN's with different numbers of layers.  There is a cut down version without all the extra code/comments, just the bare essentials to run the solution (in 100 lines :) ) and the two genomes (https://gist.github.com/2795962).  The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.
 
 
 
 ==How the Warrior works
 Player#initialize loads the 'genome' file and uses this to initialize it's Brain (neural network).
 
-* In each turn :play_turn first 'senses' the world as an 'input array'.
+Player#play_turn
+
+* On each call it first 'senses' the world as an 'input array'.
 * The input array is passed to the :act_on method of the brain which calls the neural network to calculate its response to the inputs.  The networks response is interpreted and returned as an 'action' and an 'impulse', ie: [:walk, :forward], or [:attack, :backward]
 * Finaly the action and impulse are passed to the warrior.
 
