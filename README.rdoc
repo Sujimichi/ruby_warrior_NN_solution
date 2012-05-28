@@ -58,20 +58,20 @@ The full set of 16 inputs might be something like;
      -----------
 
 ====The Brain
-The Brain class has a method :act_on which takes the input array and passes it to an instance of NeuralNetwork.  The network calculates its response which is returned as an array of 8 values.  These eight values or nodes represent different actions on the warrior.
+The Brain class has a method :act_on which takes the input array and passes it to an instance of NeuralNetwork.  The network calculates its response which is returned as an array of 8 values.  These eight values or 'nodes' represent different actions on the warrior.
 
-The first 2 nodes select an 'impulse' while the other 6 select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the first nodes absolute value is greater than the seconds it takes the forward/backward impulse, otherwise it takes the left/right impulse.
+The first 2 nodes select an 'impulse' while the other 6 select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the absolute value for the first node is greater than the absolute value for the second, it takes the forward/backward impulse, otherwise it takes the left/right impulse.
 
 The other 6 nodes each represent an action; :walk, :attack, :rest, :rescue, :pivot, :shoot respectivly (the order was not important).  Which ever of these nodes has the strongest stimulation (highest value) will be the action taken.
 
-I defined which node is 'connected' to which action, the evolution of the neural network will have to work out which node results in what outcome.  It will also have to 'realise' which actions it can use as all nodes are present throughout all the levels.  It's therefore possible for the brain to request actions which are not yet available, it will have to evolve not to as this results in no activity.
+I defined which node is connected to which action, the evolution of the neural network will have to work out which node results in what outcome.  It will also have to 'realise' which actions it can use as all nodes are present throughout all the levels.  It's therefore possible for the brain to request actions which are not yet available, it will have to evolve not to as this results in no activity.
 
 The resultant output is an array of an action and an impulse ie; [:walk, :forward] or [:attack, :backward].
 
 ====The NeuralNetwork
-The neural network used (after trying several configs) was a 2 layer network with 6 inner nodes (16 in, 8 out).  It might look something like this;
+I tried the solution with 1, 2 and 3 layered neural nets with different numbers of nodes. A 1 layer can perform and AND or an OR function, a 2 layer can perform XOR and a 3 can aproximate any mathematical function.  brains.rb has a separate class for a 1, 2 and 3 layer NN; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam all of which inherit from the Brain class.  Brains::Neanderthal was too dumb and River was..., problematic.  In the end the brain used was R2D2, the 2 layer NN; set to have 6 inner nodes (16 in, 8 out).  It might look something like this;
 
-    [w<] [w/\] [w>] [w\/] [we] [e/\] [e>] [e\/] [c<] [c/\] [c>] [c\/] [Armed?] [cur_health] [health_reducing?] [1]
+    [w<] [w/\] [w>] [w\/] [<e] [e/\] [e>] [e\/] [c<] [c/\] [c>] [c\/] [Armed?] [cur_health] [health_reducing?] [1]
 
 
                                     [?]     [?]     [?]     [?]     [?]     [?]
@@ -80,7 +80,8 @@ The neural network used (after trying several configs) was a 2 layer network wit
                        [fwd/bkwd]  [<-/->]  [walk]  [attack]  [rest]  [rescue]  [pivot]  [shoot]
 
 
-Each 'node' is connected to each 'node' in the subsequent layer.  The connections (which I could not draw in text!) are weighted according to the genome used.  The value on an inner node is the value given to each input node multipled by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
+Each 'node' is connected to each 'node' in the subsequent layer resulting in 144 connections.  The connections (which I could not draw in text!) are weighted according to the (144gene) genome used.  The value on an inner node is the value given to each input node multipled by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
+
 
 
 ====Instructing the Warrior
@@ -94,14 +95,31 @@ Evolving the NN's was not straightforward, my aim was to run evolution in each l
 
 RubyWarrior presents a difficult environment for evolution as many positive changes need to have happened before any points as awarded at all and final scores are only shown after completing a level.  The other problem is the genetic search space is big and pretty uneven resulting in much slower evolution.
 
-To speed things up I created several classes which are used to run different evolution processes (and lost the plot somewhat with the names).  There are several 'training grounds' which all inherit from the class BasicTraining the first of these is BootCamp.
+To speed things up I created several classes which are used to run different evolution processes and assess performance (and lost the plot somewhat with the names).
 
-I tried the solution with 1, 2 and 3 layered neural nets, so there is a class for each; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam all of which inherit from the Brain class.  In the end the brain used was R2D2 with the 2 layer NN.
+To run evolution of the NN's you need 'darwin.rb' and 'bootcamp.rb' along with the player and its 'brains.rb' inside a rubywarrior folder.
+To get everything set in one go run this inside the folder for a rubywarrior;
+
+    git clone /home/sujimichi/coding/lab/ruby_warrior_NN_solution && sh ruby_warrior_NN_solution/init.sh
+
+
+In 'bootcamp.rb' there are several 'training grounds' which all inherit from the class BasicTraining and evolve populations of NN's in different environments.  All training grounds work in the same way to run populations of NN's through evolution in different environments.  Each training ground initializes a genetic algorithm and sets up a fitness function specific to that training ground.  It can then be used to run the GA, save/load the population and some other common actions.
+
+The training grounds are BootCamp, CombatTraining, AgentTraining and FieldTraining.
+
+* BootCamp runs very fast evolution with simulated inputs
+* CombatTraining runs evolution in current rubywarrior level
+* AgentTraining runs evolution in epic mode using all levels
+* FieldTraining run evolution in normal mode, but with all levels. (requires some extra setup)
+
+The last two run all levels for each NN to be tested, so each level is run in a separate thread
+
+
 
 ====BootCamp
-The idea of BootCamp is to pre-condition the NN's to a set of predefined inputs with expected responses.  It does not use rubywarrior and can run quickly to race the population through several thousand generations of simple simulated experience.  The NN's are shown sets of inputs and scored for a correct answer, for example when given inputs that show an enemy in front they are given a point for returning [:attack, :forward].  The predefined inputs/responses sets of constants in AssaultCourse, ie AssaultCourse::BasicManuvers.  An instance of the class DrillSergeant is used to score each NN over the AssaultCourse.
+BootCamp runs very fast (without rubywarrior) and simulates inputs and awards points for correct output.  For example, when given inputs that show an enemy in front the NN is given a point for returning [:attack, :forward].  The predefined inputs/responses are a set of constants in AssaultCourse, ie AssaultCourse::BasicManuvers.  An instance of the class DrillSergeant is used to score each NN over the AssaultCourse.
 
-This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.  Yes this does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NN start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
+This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.  This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NN start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
 
 To start a fresh BootCamp evolution in a rubywarrior folder:
 
@@ -122,6 +140,8 @@ Once the population has individuals which can pass BootCamp they can graduate to
 
 ====CombatTraining
 This takes a population and evolves it in the current rubywarrior level.  Uses the Invigilator class to parse the output from rubywarrior and assign points.
+The Invigilator class evaluates the NN run in a level and is essentially the 'fitness function'.  As a separate class this means is can be changed mid evolution; halt execution of .train and paste in redefined Invigilator, the run .train again on the current training ground instance.
+
 
     combat_training = CombatTraining.new(2)
     combat_training.load_pop "one_I_made_eariler"
@@ -136,3 +156,10 @@ After evolving a solution to each level and unlocking epic mode then next traini
 
 ====AgentTraining
 Like CombatTraining this uses Invigilator to score the performance of an NN in rubywarrior levels.  However it is run in epic mode so all abilities are available in all levels and it tests the NN's performance of each level.  In one fitness evaluation the NN is tested on each level so to speed things up each level is run in a separate Thread and the score collected after all threads complete.
+
+
+====FieldTraining
+Like AgentTraining this tests the NN in all levels but in normal mode.  Sadly rubywarrior does not have option to run without all abilities when in epic so for this to work a separate rubywarrior folder needs to be created for each level and set at the correct level.
+
+== * Darwins Law
+I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.
