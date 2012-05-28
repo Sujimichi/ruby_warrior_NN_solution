@@ -13,11 +13,17 @@ The solution uses a 'genome' file to define the 'weights' of a neural network wh
 ===Running the solution
 To run the solution copy the files 'brains.rb' and 'genome' along with my player.rb into the warrior directory.
 
-The genome in that file will solve rubywarrior in normal mode but can't pass level 8 although it has some nice behaviours.  Once at level 8 use the genome in the file 'genome_epic' (renaming it to 'genome'). That genome will complete normal mode levels 8(badly) and 9(S grade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
+The genome in that file will solve rubywarrior in normal mode but can't pass level 8.  Once at level 8 use the genome in the file 'genome_epic' (renaming it to 'genome'). That genome will complete normal mode levels 8(badly) and 9(S grade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better and to get one which can do all levels in normal mode.
 
 
 The code in brains.rb has extra code for using NN's with different numbers of layers.  There is a cut down version without all the extra code/comments, just the bare essentials to run the solution (in 100 lines :) ) and the two genomes (https://gist.github.com/2795962).  The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.
 
+Inside a newly created rubywarrior folder:
+
+    git clone git@github.com:Sujimichi/ruby_warrior_NN_solution.git && sh ruby_warrior_NN_solution/init.sh
+    rubywarrior #repeat till level 7
+    rm genome && cp genome_epic genome
+    rubywarrior #repeat till epic mode and then again to run all of epic
 
 
 ==How the Warrior works
