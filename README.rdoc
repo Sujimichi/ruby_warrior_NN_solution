@@ -1,30 +1,22 @@
 = Evolved Neural Network solution to RubyWarrior
 
-This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artificial Intelligence which had figured out the correct responses to situations on its own.
+This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artificial Intelligence which had figured out the correct responses to situations on its own (and some guided prodding).
 
-I used Darwin's LAW* of selection to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  Evolving the solution took many thousands of generations and I did a number of things to speed this up, see 'Evolving the Solution' for more details.  I have not attempted to use this approach on the intermediate tower, one day....
+I used Darwin's LAW* of selection to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  I have not attempted to use this approach on the intermediate tower, one day....
 
 Thanks to Ryan for writing RubyWarrior, it was great fun writing this solution.
 
 ==The Solution
-
-The solution's code does not contain any human designed responses.  The human design is in parsing the rubywarrior world on each turn and presenting that to the network and in interpreting the network's output into a command which can be passed to the warrior.  The decision of what to do on each turn is entirely up to the neural network.  I have no idea what the NN's are thinking!
-
-I wanted to produce a genome which could do well in epic mode and also be able to work up the levels in normal mode from the start.  So far I have one genome which can run epic mode and one which can steadily climb up the tower from the start in normal mode up to level 7.  Levels 8 and 9 in normal mode where evolved separately and I've not been able to cross breed them with the 1-7genomes yet.
-
-The first epic solution I evolved was a trigger happy nut which made it to the top but shot all the captives.  By cross breeding it with a more captive friendly genome from level 5 I got one which does rescue captives, but only if it is also injured!  Further evolution has improved on this but some captives still get shot.  This genome gets a grade A score on epic but it could do better so I'm continuing to evolve it.
+The solution uses a 'genome' file to define the 'weights' of a neural network which responds to inputs on each turn.  The behaviour of the warrior is entirly dependent on the genome and the solution's code does not contain any human designed responses.  The code for the solution (player.rb and brains.rb) take inputs from the level and passes them to the NN and then translates it's output into a command for the warrior.
 
 
 ===Running the solution
 To run the solution copy the files 'brains.rb' and 'genome' along with my player.rb into the warrior directory.
 
-The genome in the genome file was evolved to solve rubywarrior in normal mode and will get as far as level 7 (and has some nice behaviours).
-Once at level 8 copy the genome_epic file into the folder and rename it to genome.  This genome was evolved in epic mode and will complete normal mode levels 8(badly) and 9(Sgrade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
+The genome in that file will solve rubywarrior in normal mode but can't pass level 8 although it has some nice behaviours.  Once at level 8 use the genome in the file 'genome_epic' (renaming it to 'genome'). That genome will complete normal mode levels 8(badly) and 9(Sgrade) and then all of the levels on epic.  It's the current best, I hope to get it a bit better.
 
 
-The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.  To get everything in one go run this inside the folder for a rubywarrior;
-
-    git clone /home/sujimichi/coding/lab/ruby_warrior_NN_solution && sh ruby_warrior_NN_solution/init.sh
+The code in brains.rb has extra code for using NN's with different numbers of layers.  There is a cut down version without all the extra code/comments, just the bare essentials to run the solution (==100lines) and the two genomes (https://gist.github.com/2795962).  The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution.  They where used to evolve the solution, see 'Evolving the Solution' for more.
 
 
 
@@ -32,13 +24,13 @@ The other files 'darwin.rb' and 'bootcamp.rb' are not needed to run the solution
 Player#initialize loads the 'genome' file and uses this to initialize it's Brain (neural network).
 
 * In each turn :play_turn first 'senses' the world as an 'input array'.
-* The input array is passed to the :act_on method of the brain which calls the neural network to calculate its response to the inputs.  The networks response is interpreted and returned as an 'action' and an 'impulse', ie: [:walk, :forward]
+* The input array is passed to the :act_on method of the brain which calls the neural network to calculate its response to the inputs.  The networks response is interpreted and returned as an 'action' and an 'impulse', ie: [:walk, :forward], or [:attack, :backward]
 * Finaly the action and impulse are passed to the warrior.
 
 ====Inputs
-The input array has a mapping of warror.feel and warror.look (when available) in all directions as an Array of values. The first four values are for 'walls' in each direction, left, forward, right, backward respectivly.  The value is 1 if the warrior can feel a wall in the given direction.  The next four values represent 'enemies' of all kinds (with the same order for directions) and the next four are for 'captives'.
+The input array has a mapping of warror.feel and warror.look (when available) in all directions as an Array of values. The first four values are for 'walls' in each direction, left, forward, right, backward respectivly.  The value is 1 if the warrior can feel a wall in the given direction, otherwise 0.  The next four values represent 'enemies' of all kinds and the next four are for 'captives' (all have the same order for directions).
 
-If the warrior can just :feel the first 12 values might be;
+For example, if the warrior can just :feel the first 12 values might be;
      -----------
     |  @a     >|   =>   [1,0,1,0, 0,1,0,0, 0,0,0,0]
      -----------
@@ -50,11 +42,11 @@ For example;
     |  @ a    >|   =>   [1,0,1,0.3, 0,0.6,0,0, 0,0,0,0]
      -----------
 
-The input array also has values for armed, health and taking_fire.
+The input array also has values for armed, health and health reducing.
 
 * armed gives the neural net a sense of whether it can shoot.  1 for can shoot, otherwise 0.
 * health is the current health, scaled between 0 and 1 with 0 for full, 1 for dead.  if the warrior does not respond to health it returns 0.
-* taking_fire returns 1 if the previous health is less than current.
+* 'health reducing' returns 1 if the previous health is less than current, otherwise 0.
 
 There is one final input which is a constant 1 in all cases (representational bias)
 The full set of 16 inputs might be something like;
@@ -66,29 +58,29 @@ The full set of 16 inputs might be something like;
      -----------
 
 ====The Brain
-The Brain class has a method :act_on which takes the input array and passes itto an instance of NeuralNetwork.  The network calculates its response which is returned as an array of 8 values.  These eight values or nodes represent different actions on the warrior.  The first two nodes select an 'impulse' while the others select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the first nodes absolute value is greater than the seconds it takes the forward/backward impulse, otherwise it takes the left/right impulse.
+The Brain class has a method :act_on which takes the input array and passes it to an instance of NeuralNetwork.  The network calculates its response which is returned as an array of 8 values.  These eight values or nodes represent different actions on the warrior.
+
+The first 2 nodes select an 'impulse' while the other 6 select an 'action'.  The first node defines the forward and backward impulse; positive for forward and negative for backward, the second node defines the impulse for left and right, +ive for left, -ive for right.  If the first nodes absolute value is greater than the seconds it takes the forward/backward impulse, otherwise it takes the left/right impulse.
 
 The other 6 nodes each represent an action; :walk, :attack, :rest, :rescue, :pivot, :shoot respectivly (the order was not important).  Which ever of these nodes has the strongest stimulation (highest value) will be the action taken.
 
-The evolution of the neural network will have to work out which node results in what outcome and 'realise' which actions it can use as all nodes are present throughout all the levels.  It's therefore possible for the brain to request actions which are not yet available, it will have to evolve not to as this would result in no activity.
+I defined which node is 'connected' to which action, the evolution of the neural network will have to work out which node results in what outcome.  It will also have to 'realise' which actions it can use as all nodes are present throughout all the levels.  It's therefore possible for the brain to request actions which are not yet available, it will have to evolve not to as this results in no activity.
 
 The resultant output is an array of an action and an impulse ie; [:walk, :forward] or [:attack, :backward].
 
 ====The NeuralNetwork
-The neural network used (after trying several configs) was a 2 layer network with 6 inner nodes.
+The neural network used (after trying several configs) was a 2 layer network with 6 inner nodes (16 in, 8 out).  It might look something like this;
 
-    [w<]  [w/\]  [w>]  [w\/]  [we]  [e/\]  [e>]  [e\/]  [c<]  [c/\]  [c>]  [c\/]  [Armed?]  [cur_health]  [health_reducing?]  [1]
-
-
-
-                                              [?]  [?]  [?]  [?]  [?]  [?]
+    [w<] [w/\] [w>] [w\/] [we] [e/\] [e>] [e\/] [c<] [c/\] [c>] [c\/] [Armed?] [cur_health] [health_reducing?] [1]
 
 
+                                    [?]     [?]     [?]     [?]     [?]     [?]
 
-                          [fwd/bkwd]  [<-/->]  [walk]  [attack]  [rest]  [rescue]  [pivot]  [shoot]
+
+                       [fwd/bkwd]  [<-/->]  [walk]  [attack]  [rest]  [rescue]  [pivot]  [shoot]
 
 
-The resultant network would look something like this, with each 'node' connected to each 'node' in the subsequent layer.  The connections (which I could not draw in text!) are weighted according to the genome used.  The value on an inner node is the value given to each input node multipled by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
+Each 'node' is connected to each 'node' in the subsequent layer.  The connections (which I could not draw in text!) are weighted according to the genome used.  The value on an inner node is the value given to each input node multipled by the weight of the connection to that inner node and all summed together and passed through a sin function (Math.sin(summed_value)).  The same thing happens for the output nodes;  the value is the weighted sum (with sin func) of the values from the inner layer.
 
 
 ====Instructing the Warrior
@@ -144,35 +136,3 @@ After evolving a solution to each level and unlocking epic mode then next traini
 
 ====AgentTraining
 Like CombatTraining this uses Invigilator to score the performance of an NN in rubywarrior levels.  However it is run in epic mode so all abilities are available in all levels and it tests the NN's performance of each level.  In one fitness evaluation the NN is tested on each level so to speed things up each level is run in a separate Thread and the score collected after all threads complete.
-
-
-
-
-
-
-
-
-
-
-== * Darwins Law
-I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now coutless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce novel, complex and undesigned behaviours via recombination and mutation'.  Part of the reason for writing this was to do a simple and clear demonstration for an on going argument with some creationist types.  RubyWarrior provides a great platform as it something more interesting/real than a lot of the more mathematical proofs.
-
-
-
-
-
-
---notes
-After trying many different NN configurations I settled on a 2 layer network with 16 input nodes, 6 nodes in the inner layer and 8 outputs.  This was a good balence between complexity while still keeping the genome relatively short (144 genes).
-To speed things up I had an initial step which evolved the networks over some simulated situations.  This pre-conditioning phase can be run much faster as it does not use rubywarrior and is used to take the population through the first few thousand generations and introduce some of the needed genes.  The pre-conditioning results in NN's which are able to solve the first 2-3 levels without further evolution.  See more about this later.
-
-There are three possible brain classes; Brains::Neanderthal, Brains::R2D2 and Brains::RiverTam for 1, 2 and 3 layer neural networks.  R2D2 is the brain used in the solution, River was,... problematic.
-
-
-RubyWarrior is a really good learning tool.  I hope this solution which has very simple implementations of neural networks and genetic algorithms can also be of use to others as a learning toy.
-
-
-
-
-
-foo
