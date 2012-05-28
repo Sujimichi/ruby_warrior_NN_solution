@@ -1,7 +1,8 @@
 require "./brains.rb"
 require "./darwin.rb"
 
-#This file contains a collection of classes which are used in the evolution of the neural networks.  Nothing in here is needed to run a trained NN in rubywarrior.
+#This file contains a collection of classes which are used in the evolution of the neural networks.  
+#Nothing in here is needed to run a trained NN in rubywarrior.
 #There are several classes which are used to run evolution on 'populations' in a number of ways.
 #
 #BootCamp - used to evolve a population of NN's to respond to a set of predefined inputs and outputs 
@@ -44,67 +45,25 @@ require "./darwin.rb"
 #bc.train
 #bc.save_pop "popname"
 #bc.write_best #find best genome and save to genome file
-#
-
-#BOOT CAMP - basic training
-#subject neural nets to a pre-defined set of inputs and award points for correct actions
-#Boot camp can be run very quickly for several thousand generations to get the population closer to required behavior
-#After boot camp the population is transfered to run in the real conditions where the behaviours learnt in boot camp can be refined. 
-#
-#As well as faster runtimes Bootcamp also provides a smoother gradient for evolution.  In the "real environment" of rubywarior a great many positive 
-#selection/mutation events need to happen before any points are awarded atall.  
 
 
 #base class which all training grounds inherit.
 class BasicTraining
+  require 'digest'
   attr_accessor :ga, :nodes, :gene_length
 
+  #sets ups config vars used in training ground. n_layers defines number of layers for NN.
   def set_config_for n_layers = 2
-    raise "Look, just no!" unless [1,2,3].include?(n_layers)
+    raise "Look, just no!" unless [1,2,3].include?(n_layers)  #0 layers makes no sense, 4 is pointless as a 3 can do any math func (kinda).
     @warrior_name = Dir.getwd.split("/").last.sub("-beginner", "")
     @n_layers = n_layers   
-    nodes_1_layer = {:in => 16, :out => 8}
+    #define numbers of nodes.  if changed, changes need to be reflected in player.rb
+    nodes_1_layer = {:in => 16, :out => 8}  
     nodes_2_layer = {:in => 16, :inner => 6, :out => 8}
     nodes_3_layer = {:in => 16, :inner => 6, :inner2 => 6, :out => 8}
     @nodes = [nodes_1_layer, nodes_2_layer, nodes_3_layer][@n_layers-1] 
     @gene_length = Brain.required_genome_length_for(nodes)
   end
-
-  #calls evolve on the Genetic Algorithm in @ga.  also provides functionality for auto saving the population during evolution.
-  def train use_new_name = false
-    if @auto_save_every_n_generations #can be set to an int to have the population written to file even n generations.  
-      n = @auto_save_every_n_generations
-      i = @ga.generations/n
-      #workout what name to use to auto save population as.  If use_name_name is true a new name will be used for that call to :train.  
-      # ie 
-      # bootcamp.train #=> first time sets a new name based on inital state
-      # bootcamp.train #=> stop execution and then run again, will use same name as before
-      # bootcamp.train true #=> will use a new name based on current state
-      # bootcamp.train "custom_name" #=> will use the given name.
-      if use_new_name && !use_new_name.eql?(true) #not false, but not true; a string perhaps
-        @uniq_name = use_new_name 
-        use_new_name = false
-      end
-      use_new_name = true unless @uniq_name
-      if use_new_name
-        require 'digest'
-        d = Digest::MD5.new
-        d << @ga.instance_variables.map{|v| @ga.instance_variable_get(v) }.compact.join      
-        @uniq_name = d.hexdigest 
-      end
-      name = "current_pop_#{@nodes.size-1}layer-#{@nodes.values.join("-")}_#{self.class.to_s}_#{@uniq_name}"     
-
-      i.times do 
-        @ga.evolve(n)
-        print "\n\nran #{n} generations.  Saving population as #{name}...."
-        self.save_pop name
-        puts "done.\n\n"
-      end
-    else
-      @ga.evolve
-    end  
-  end
-  alias run train
 
   def write_best
     genome = @ga.best
@@ -166,8 +125,37 @@ class BasicTraining
     new_training_groud
   end
 
-  
+  #calls evolve on the Genetic Algorithm in @ga.  
+  #also provides functionality for auto saving the population during evolution.  Really ugly method, really not important, just the start button.
+  def train use_new_name = false
+    if @auto_save_every_n_generations #can be set to an int to have the population written to file even n generations.  
+      n = @auto_save_every_n_generations
+      i = @ga.generations/n
+      #workout what name to use to auto save population as.  If use_name_name is true a new name will be used for that call to :train.  
+      if use_new_name && !use_new_name.eql?(true) #not false, but not true; a string perhaps
+        @uniq_name = use_new_name 
+        use_new_name = false
+      end
+      use_new_name = true unless @uniq_name
+      if use_new_name
+        d = Digest::MD5.new
+        d << @ga.instance_variables.map{|v| @ga.instance_variable_get(v) }.compact.join      
+        @uniq_name = d.hexdigest 
+      end
+      name = "current_pop_#{@nodes.size-1}layer-#{@nodes.values.join("-")}_#{self.class.to_s}_#{@uniq_name}"     
+      i.times do 
+        @ga.evolve(n)
+        print "\n\nran another #{n} generations.  Saving population as #{name}...."
+        self.save_pop name
+        puts "done.\n\n"
+      end
+    else
+      @ga.evolve
+    end  
+  end
+  alias run train 
 end
+
 
 #BootCamp runs the evolution of a population of NNs over training examples from AssaultCourse.
 class BootCamp < BasicTraining
@@ -176,7 +164,7 @@ class BootCamp < BasicTraining
   #n_layers - define which NN to use 1, 2 or 3 layered.
   def initialize n_layers = 2 
     @auto_save_every_n_generations = 1000
-    set_config_for n_layers
+    set_config_for n_layers #=> sets @warrior_name, @n_layers, @nodes, @gene_length
 
     @ga = MGA.new(:generations => 100000, :mutation_rate => 10, :gene_length => @gene_length, :popsize => 30, :fitness => Proc.new{|genome, gen|
       print "#{gen} |"
@@ -188,7 +176,7 @@ class BootCamp < BasicTraining
       #Basic walking drills - move in only available dir
       d.test_recruit_on(AssaultCourse::BasicManuvers)       #learn to walk
       d.test_recruit_on(AssaultCourse::Retreat)
-      d.test_recruit_on(AssaultCourse::BasicAssault)      #learn to attack in adjacent sqaures
+      d.test_recruit_on(AssaultCourse::BasicAssault)        #learn to attack in adjacent sqaures
 
       unless d.score.include?(0)
         d.test_recruit_on(AssaultCourse::Recovery )         #learn to recover when damaged
@@ -205,16 +193,16 @@ class BootCamp < BasicTraining
       score
     }) 
   end
-
-
 end
+
+
 
 #CombatTraining runs the evolution of a population of NNs in the current level of rubywarrior.
 class CombatTraining < BasicTraining
 
   def initialize n_layers = 2
     @auto_save_every_n_generations = 500
-    set_config_for n_layers
+    set_config_for n_layers #=> sets @warrior_name, @n_layers, @nodes, @gene_length
     reset_high_score
 
     @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :fitness => Proc.new{|genome, gen|
@@ -233,7 +221,6 @@ class CombatTraining < BasicTraining
     })
 
   end
-
 end
 
 
@@ -243,7 +230,7 @@ class AgentTraining < BasicTraining
   def initialize n_layers = 2
     @auto_save_every_n_generations = 100
     @target_score = 842
-    set_config_for n_layers
+    set_config_for n_layers #=> sets @warrior_name, @n_layers, @nodes, @gene_length
     reset_high_score
     @ga =MGA.new(:generations => 5000, :mutation_rate => 2, :gene_length => @gene_length, :cache_fitness => true, :fitness => Proc.new{|genome, gen|
       puts "#{gen}\n"
@@ -281,7 +268,7 @@ class FieldTraining < BasicTraining
   def initialize n_layers =2
     @auto_save_every_n_generations = 100
     @target_score = 842
-    set_config_for n_layers   
+    set_config_for n_layers #=> sets @warrior_name, @n_layers, @nodes, @gene_length
     reset_high_score
 
     @initial_dir = Dir.getwd
@@ -299,9 +286,7 @@ class FieldTraining < BasicTraining
       #level_weight = ace_scores.map{|i| (15/i.to_f).round(1)} #=> [1.0, 0.6, 0.2, 0.2, 0.1, 0.1, 0.3, 0.3, 0.2] 
       level_weight = [1.0, 0.5, 0.2, 0.1, 0.1, 0.1, 0.4, 0.4, 0.3]
 
-
       puts "\n\n"
-    
       threads = []
       levels.each do |lvl|
         Dir.chdir("#{rootdir}/level#{lvl}bot-beginner")
@@ -313,10 +298,7 @@ class FieldTraining < BasicTraining
           results = `rubywarrior -t 0 -s` #run runywarrior
           #use invigilator to get the final score.  Also returns the break down of points for displaying.
           score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results(results)   
-
           score = score * level_weight[lvl-1]
-
-
           puts "level-#{lvl}|levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
           instance_variable_set("@ans#{lvl}", score) #set result in an @var ie @ans1.  Done so threads don't try to write answer to a common var.
           Dir.chdir(@initial_dir)
@@ -326,22 +308,16 @@ class FieldTraining < BasicTraining
         #After the sleep it moves the the next level and moves to its dir and again runs rubywarrior in a new Thread.  
         #Without the sleep all the threads would be started almost at the same time and would start in which ever directory was now the current directory.
         #This could cause the first level's rubywarrior command to be called in the next levels dir.
-  
       end
       threads.each{|t| t.join}
-
       score_sum = levels.map{|lvl| instance_variable_get("@ans#{lvl}")}.compact.sum #collect up and sum the defined @vars with the results.
       puts "| Summed Score #{score_sum}"
       remark_on score_sum
       puts "."
       score_sum
-
-
     })
 
   end
-
-
 end
 
 
@@ -433,6 +409,8 @@ end
 
 #Invigilator is used to inspect the results from a run of rubywarrior and calculate a score.
 #It is essentially the fitness function for the GAs.
+#As each fitness evaluation calls a new instance the Invigilator can be changed part way throu an Agent or FieldTraining run.
+#stop training run with ctrl+c, paste in new Invigilator and continue training run.
 class Invigilator
 
   def initialize name = Dir.getwd.split("/").last.sub("-beginner", "")

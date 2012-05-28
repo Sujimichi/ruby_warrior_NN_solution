@@ -2,7 +2,7 @@
 
 This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artificial Intelligence which had figured out the correct responses to situations on its own (and some guided prodding).
 
-I used Darwin's LAW* of selection to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  I have not attempted to use this approach on the intermediate tower, one day....
+I used Darwin's 'LAW* of selection' to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  I have not attempted to use this approach on the intermediate tower, one day....
 
 Thanks to Ryan for writing RubyWarrior, it was great fun writing this solution.
 
