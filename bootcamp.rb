@@ -94,7 +94,7 @@ class BasicTraining
       end
       name = "current_pop_#{@nodes.size-1}layer-#{@nodes.values.join("-")}_#{self.class.to_s}_#{@uniq_name}"     
 
-      i.times do |i|
+      i.times do 
         @ga.evolve(n)
         print "\n\nran #{n} generations.  Saving population as #{name}...."
         self.save_pop name
