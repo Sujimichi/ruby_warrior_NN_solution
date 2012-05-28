@@ -95,7 +95,7 @@ The action and impulse from the brain are passed to the warrior inside a rescue 
 
 Evolving the NN's was not straightforward, my aim was to run evolution in each level until it managed to solve it and then progress.  When I reached the top I hoped that I could put the winning genomes from each level into one population and use that to evolve the epic solution.  I was not expecting the epic solution to allow all abilities in all levels but by crossing winners from the later levels I was able to evolve the epic solution.
 
-RubyWarrior presents a difficult environment for evolution as many positive changes need to have happened before any points as awarded at all and final scores are only shown after completing a level.  The other problem is the genetic search space is big and pretty uneven resulting in much slower evolution.
+RubyWarrior presents a difficult environment for evolution as many positive changes need to have happened before any points are awarded at all and final scores are only shown after completing a level.  The other problem is the genetic search space is big and pretty uneven resulting in much slower evolution.
 
 To speed things up I created several classes which are used to run different evolution processes and assess performance (and lost the plot somewhat with the names).
 
@@ -114,14 +114,14 @@ The training grounds are BootCamp, CombatTraining, AgentTraining and FieldTraini
 * AgentTraining runs evolution in epic mode using all levels
 * FieldTraining run evolution in normal mode, but with all levels. (requires some extra setup)
 
-The last two run all levels for each NN to be tested, so each level is run in a separate thread
+The last two run all levels for each NN to be tested, so each level is run in a separate thread to speed things up.
 
 
 
 ====BootCamp
 BootCamp runs very fast (without rubywarrior) and simulates inputs and awards points for correct output.  For example, when given inputs that show an enemy in front the NN is given a point for returning [:attack, :forward].  The predefined inputs/responses are a set of constants in AssaultCourse, ie AssaultCourse::BasicManuvers.  An instance of the class DrillSergeant is used to score each NN over the AssaultCourse.
 
-This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.  This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NN start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
+This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.  This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It should be possible (will try at some point) to not use BootCamp but it will take much longer.  Once the NNs start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.
 
 To start a fresh BootCamp evolution in a rubywarrior folder:
 
@@ -142,7 +142,7 @@ Once the population has individuals which can pass BootCamp they can graduate to
 
 ====CombatTraining
 This takes a population and evolves it in the current rubywarrior level.  Uses the Invigilator class to parse the output from rubywarrior and assign points.
-The Invigilator class evaluates the NN run in a level and is essentially the 'fitness function'.  As a separate class this means is can be changed mid evolution; halt execution of .train and paste in redefined Invigilator, the run .train again on the current training ground instance.
+The Invigilator class evaluates the NN run in a level and is essentially the 'fitness function'.  As a separate class this means is can be changed mid evolution; halt execution of .train on the training ground and paste in redefined Invigilator, the run .train again on the current training ground instance.
 
 
     combat_training = CombatTraining.new(2)
@@ -163,5 +163,12 @@ Like CombatTraining this uses Invigilator to score the performance of an NN in r
 ====FieldTraining
 Like AgentTraining this tests the NN in all levels but in normal mode.  Sadly rubywarrior does not have option to run without all abilities when in epic so for this to work a separate rubywarrior folder needs to be created for each level and set at the correct level.
 
-== * Darwins Law
-I referred to the so called 'theory of evolution' as Darwin's LAW of selection.  It so is!  There are now countless repeatable experiments (and this is another) which show again and again that the PROCESS which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.
+FieldTraining was added after I found that epic mode allows all abilities in all levels.  I wanted to take the winning genomes from each level and evolve a solution which could do all levels in normal mode.  I'm still trying to get one that can do 8 + 9 as well as 1-7.
+
+
+
+=== * Darwins Law
+I referred to 'the theory of evolution' as Darwin's LAW of selection.  It so is!  The process of selection which he defined does exactly what he said 'produce complex novel behaviours via recombination and mutation'.  Weather WE are here because of it is another matter, but does not change the fact that Darwin's process is mathematically sound.
+
+
+There are now countless repeatable experiments (and this is another) which show again and again that
