@@ -32,8 +32,11 @@ class MGA
   end
   def fitness genome
     return @fitness_function.call(genome, @current_generation) unless @cache_fitness  #return fitness as norm if caching is off
-    @scores[genome] = @fitness_function.call(genome, @current_generation) unless @scores[genome] #update cache if value not present
-    puts "cached fitness #{@scores[genome]}"
+    unless @scores[genome] #update cache if value not present
+      @scores[genome] = @fitness_function.call(genome, @current_generation) 
+    else
+      puts "cached fitness #{@scores[genome]}"
+    end    
     @scores[genome] #return cached value
   end
   
