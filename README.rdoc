@@ -1,6 +1,6 @@
 = Evolved Neural Network solution to RubyWarrior
 
-This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artificial Intelligence which had figured out the correct responses to situations on its own (and some guided prodding).
+This is an attempt at solving Ryan Bates' RubyWarrior using an evolved Neural Network.  My aim was to build a solution that was not a 'state machine' which used designed 'if then else' logic to respond to situations but rather an Artificial Intelligence which had figured out the correct responses to situations on its own (with some guided prodding).
 
 I used Darwin's 'LAW* of selection' to evolve the genomes of a population of Neural Networks (NN's) from initially random genomes and eventually arrived at a genome able to get a grade A score on the beginner tower in epic mode.  I have not attempted to use this approach on the intermediate tower, one day....
 
@@ -128,7 +128,9 @@ The last two run all levels for each NN to be tested, so each level is run in a 
 BootCamp runs very fast (without rubywarrior) and simulates inputs and awards points for correct output.  For example, when given inputs that show an enemy in front the NN is given a point for returning [:attack, :forward].  The predefined inputs/responses are a set of constants in AssaultCourse, ie AssaultCourse::BasicManuvers.  An instance of the class DrillSergeant is used to score each NN over the AssaultCourse.
 
 This evolution starts with a completely random population and over several thousand generations will have introduced some of the required genes.
-This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It is possible to not use BootCamp but it will take much longer.  Once the NNs start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.  The other key use of BootCamp was to test the potential of NN's quickly; for example I was able to rule out using a single layered NN as it could not make all the distictions to pass BootCamp.
+This does imply some degree of human design in the NN responses but once evolved in BootCamp it is only enough to pass the first two levels.  It is possible to not use BootCamp but it takes much longer.  So far without BootCamp I've evolved a level 1-5 solution but its taken a couple of days so far.
+
+Once the NNs start evolving in the real environment a lot of the behaviours learnt in BootCamp are lost or are changed.  The other key use of BootCamp was to test the potential of NN's quickly; for example I was able to rule out using a single layered NN as it could not make all the distictions to pass BootCamp.
 
 To start a fresh BootCamp evolution in a rubywarrior folder:
 
