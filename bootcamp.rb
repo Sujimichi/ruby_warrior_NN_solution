@@ -264,15 +264,22 @@ end
 #FieldTraining runs the evolution of a population of NNs in each level of rubywarrior (non-epic)
 #Requires some setup.  Needs a rubywarrior dir setup for each level named levelxbot where x is the level number.
 class FieldTraining < BasicTraining
+  attr_accessor :levels, :level_weight
 
-  def initialize n_layers =2
+  def initialize n_layers = 2
     @auto_save_every_n_generations = 100
-    @target_score = 842
+    @target_score = 200
     set_config_for n_layers #=> sets @warrior_name, @n_layers, @nodes, @gene_length
     reset_high_score
 
     @initial_dir = Dir.getwd
-    levels = [1,2,3,4,5,6,7,8,9]
+    @levels = [1,2,3,4,5,6,7,8,9]
+
+    #weight level scores to account for some levels having more potential points than others.  Try to prevent breeding with preference for levels
+    #level_weight = [0.8, 1.0, 0.8, 0.6, 0.4, 0.9, 1.0, 1.0, 1.0] #stab in dark values      
+    #ace_scores = [15, 26, 71, 90, 123, 105, 50, 46, 100]#level ace scores.
+    #level_weight = ace_scores.map{|i| (15/i.to_f).round(1)} #=> [1.0, 0.6, 0.2, 0.2, 0.1, 0.1, 0.3, 0.3, 0.2] 
+    @level_weight = [1.0, 0.5, 0.2, 0.2, 0.1, 0.2, 0.4, 0.4, 0.3]
 
     rootdir = "/home/sujimichi/coding/lab/rubywarrior"
 
@@ -280,25 +287,18 @@ class FieldTraining < BasicTraining
       puts "#{gen}\n"
       Dir.chdir(rootdir)
 
-      #weight level scores to account for some levels having more potential points than others.  Try to prevent breeding with preference for levels
-      #level_weight = [0.8, 1.0, 0.8, 0.6, 0.4, 0.9, 1.0, 1.0, 1.0] #stab in dark values      
-      #ace_scores = [15, 26, 71, 90, 123, 105, 50, 46, 100]#level ace scores.
-      #level_weight = ace_scores.map{|i| (15/i.to_f).round(1)} #=> [1.0, 0.6, 0.2, 0.2, 0.1, 0.1, 0.3, 0.3, 0.2] 
-      level_weight = [1.0, 0.5, 0.2, 0.1, 0.1, 0.1, 0.4, 0.4, 0.3]
-
       puts "\n\n"
       threads = []
-      levels.each do |lvl|
+      @levels.each do |lvl|
         Dir.chdir("#{rootdir}/level#{lvl}bot-beginner")
         File.open("./genome", 'w'){|f| f.write( genome.join(",") )} #write the genome to file which Player will use
-        
 
         threads << Thread.new {         
           invigilator = Invigilator.new #invigilator class examins output from rubywarrior and assigns points for various actions.  Invigilator#score_results == the fitness function
           results = `rubywarrior -t 0 -s` #run runywarrior
           #use invigilator to get the final score.  Also returns the break down of points for displaying.
           score, level_score, level_total, n_turns, turn_score, time_bonus, clear_bonus = invigilator.score_results(results)   
-          score = score * level_weight[lvl-1]
+          score = score * @level_weight[lvl-1]
           puts "level-#{lvl}|levelscore: #{level_score} | turnscore: #{turn_score.round(2)} | bonus(t:c): #{time_bonus}:#{clear_bonus} | turns: #{n_turns} | Total: #{level_total} | fitnes: #{score.round(2)}"
           instance_variable_set("@ans#{lvl}", score) #set result in an @var ie @ans1.  Done so threads don't try to write answer to a common var.
           Dir.chdir(@initial_dir)
@@ -556,3 +556,50 @@ class PopBuilder
 
 end
 
+class CrossBreeder
+
+  # introduce_trait(:from => <weak_genome_with_good_trait>, :into => <strong_genome_or_(small)pop_without_trait>)
+  def introduce_trait args
+    weak_g = args[:from]
+    args[:popsize] ||= 40
+    
+    if args[:into].map{|i| i.is_a?(Array)}.all?
+      puts "given population"
+      strong_pop = args[:into]
+    else
+      puts "given genome"
+      strong_pop = Array.new(1){args[:into]}
+    end
+
+    pop = []
+    strong_pop.each{|m| 
+      pop << m
+      9.times{ pop << weak_g}
+    }
+
+    pop = grow_pop_to pop, args[:popsize]   
+  end
+
+  def grow_pop_to pop, new_size
+    npop = []
+    n = new_size/pop.size
+    n.times{ pop.each{|g| npop << g} }
+    npop
+  end
+
+  def breed pop, training_groud = FieldTraining.new
+
+    training_groud.population = pop
+    training_groud.ga.mutation_rate = 0.01    #almost no mutation
+    training_groud.ga.cross_over_rate = 0.1   #take more from the weaker genome when making new genome.
+
+    #training_groud.train
+    training_groud
+  end
+
+end
+
+c = CrossBreeder.new
+pop = c.introduce_trait :from => g6, :into => g_strong
+ft = c.breed pop
+ft.train
